@@ -1,0 +1,78 @@
+// FR: Foundation — project setup (no feature logic yet)
+// StyleME database schema. Field names are FINAL — do not rename them later.
+// Table names are set with @@map so they match the project spec.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Allowed values for users.accountType
+enum AccountType {
+  free
+  premium
+}
+
+model User {
+  id           Int         @id @default(autoincrement())
+  name         String
+  email        String      @unique
+  passwordHash String
+  city         String
+  accountType  AccountType @default(free)
+  createdAt    DateTime    @default(now())
+
+  wardrobeItems WardrobeItem[]
+  savedOutfits  SavedOutfit[]
+  subscriptions Subscription[]
+
+  @@map("users")
+}
+
+model WardrobeItem {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  imageUrl    String
+  category    String
+  colour      String
+  style       String
+  formality   String
+  season      String
+  isFavourite Boolean  @default(false)
+  wearCount   Int      @default(0)
+  uploadDate  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wardrobe_items")
+}
+
+model SavedOutfit {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  name        String
+  occasionTag String
+  itemIds     Json // JSON array of wardrobe_item ids, e.g. [1, 4, 7]
+  createdAt   DateTime @default(now())
+  wornCount   Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("saved_outfits")
+}
+
+model Subscription {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  customerRef String
+  expiryDate  DateTime
+  planStatus  String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}

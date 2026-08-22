@@ -1,0 +1,34 @@
+# FR: Foundation — project setup (no feature logic yet)
+
+# Dependencies
+node_modules/
+
+# Environment files (keep .env.example in git)
+.env
+.env.local
+.env.*.local
+
+# SQLite database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Uploaded images (keep the folder, ignore the files)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Frontend build output
+frontend/dist/
+frontend/dist-ssr/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
