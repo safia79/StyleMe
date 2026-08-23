@@ -1,5 +1,7 @@
 // FR-04: AI Outfit Recommendation
 // FR-06: Style Me (Generative AI Prompt) — save / list outfits
+// FR-09: Outfit History — rename, wear, delete
+// FR-12: Manual Outfit Builder — POST / creates a saved_outfits row
 
 const express = require("express");
 const prisma = require("../db");
@@ -80,6 +82,95 @@ router.post("/", async (req, res) => {
   } catch (err) {
     console.error("Save outfit error:", err);
     return res.status(500).json({ error: "Could not save this outfit. Please try again." });
+  }
+});
+
+async function findOwnedOutfit(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Outfit not found." });
+    return null;
+  }
+
+  const outfit = await prisma.savedOutfit.findFirst({
+    where: { id, userId: req.session.userId },
+  });
+  if (!outfit) {
+    res.status(404).json({ error: "Outfit not found." });
+    return null;
+  }
+  return outfit;
+}
+
+// FR-09: click name, edit, Enter to save
+router.patch("/:id", async (req, res) => {
+  try {
+    const existing = await findOwnedOutfit(req, res);
+    if (!existing) return;
+
+    const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+    if (!name) {
+      return res.status(400).json({ error: "Please enter an outfit name." });
+    }
+
+    const outfit = await prisma.savedOutfit.update({
+      where: { id: existing.id },
+      data: { name },
+    });
+    const [withItems] = await attachItems([outfit], req.session.userId);
+    return res.json({ outfit: withItems });
+  } catch (err) {
+    console.error("Rename outfit error:", err);
+    return res.status(500).json({ error: "Could not rename this outfit." });
+  }
+});
+
+// FR-09: Wear Today — bump wornCount and each item's wearCount
+router.post("/:id/wear", async (req, res) => {
+  try {
+    const existing = await findOwnedOutfit(req, res);
+    if (!existing) return;
+
+    const itemIds = Array.isArray(existing.itemIds)
+      ? existing.itemIds.map(Number).filter((id) => Number.isInteger(id))
+      : [];
+
+    const updates = [
+      prisma.savedOutfit.update({
+        where: { id: existing.id },
+        data: { wornCount: { increment: 1 } },
+      }),
+    ];
+    if (itemIds.length) {
+      updates.push(
+        prisma.wardrobeItem.updateMany({
+          where: { userId: req.session.userId, id: { in: itemIds } },
+          data: { wearCount: { increment: 1 } },
+        }),
+      );
+    }
+    await prisma.$transaction(updates);
+
+    const updated = await prisma.savedOutfit.findUnique({ where: { id: existing.id } });
+    const [withItems] = await attachItems([updated], req.session.userId);
+    return res.json({ outfit: withItems });
+  } catch (err) {
+    console.error("Wear outfit error:", err);
+    return res.status(500).json({ error: "Could not mark this outfit as worn." });
+  }
+});
+
+// FR-09: delete the outfit row only — wardrobe items stay
+router.delete("/:id", async (req, res) => {
+  try {
+    const existing = await findOwnedOutfit(req, res);
+    if (!existing) return;
+
+    await prisma.savedOutfit.delete({ where: { id: existing.id } });
+    return res.json({ message: "Outfit deleted" });
+  } catch (err) {
+    console.error("Delete outfit error:", err);
+    return res.status(500).json({ error: "Could not delete this outfit." });
   }
 });
 

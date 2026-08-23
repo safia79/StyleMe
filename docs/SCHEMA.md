@@ -18,7 +18,7 @@ Stores each StyleME account.
 | name | Text | Display name |
 | email | Text | Unique login email (stored lowercase) |
 | passwordHash | Text | bcrypt hash of the password (never store the raw password) |
-| city | Text | Used for weather on Recommendations. Optional on the Register form; stored as `""` if left blank |
+| city | Text | Used for weather on Recommendations. Optional on Register (`""` if blank). Profile Settings (FR-10) requires a non-empty city when saving |
 | accountType | Text | `free` or `premium`. Default: `free` |
 | createdAt | Date/time | Set automatically when the row is created |
 
@@ -41,7 +41,7 @@ One row per clothing item a user has uploaded.
 | formality | Text | See allowed values below |
 | season | Text | See allowed values below |
 | isFavourite | Boolean | Default: false |
-| wearCount | Integer | Default: 0 (**not used in the UI yet**) |
+| wearCount | Integer | Default: 0. Incremented by Outfit History **Wear Today** |
 | uploadDate | Date/time | Set automatically when the row is created |
 
 If a user is deleted, their wardrobe items are deleted too (cascade).
@@ -68,7 +68,7 @@ Outfits a user has saved (a named combination of wardrobe items).
 | occasionTag | Text | Occasion label (e.g. Casual, Work, Custom, Any) |
 | itemIds | JSON | Array of `wardrobe_items` ids, e.g. `[1, 4, 7]` |
 | createdAt | Date/time | Set automatically when the row is created |
-| wornCount | Integer | Default: 0 (**not used in the UI yet**) |
+| wornCount | Integer | Default: 0. Incremented by Outfit History **Wear Today** |
 
 If a user is deleted, their saved outfits are deleted too (cascade).
 
@@ -76,7 +76,7 @@ If a user is deleted, their saved outfits are deleted too (cascade).
 
 ## subscriptions
 
-Premium plan records for a user. **This table is unused so far** (no payment FR yet).
+Premium plan records for a user. Written by the mock checkout on **Subscription** (FR-08).
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -100,3 +100,9 @@ Prisma uses PascalCase model names in code. The real SQLite table names are:
 - `Subscription` → `subscriptions`
 
 The **field names** in code match the columns above exactly. Relation fields such as `wardrobeItems` are Prisma helpers, not extra database columns.
+
+---
+
+## Style preferences (not a table)
+
+There is no `stylePreferences` column. FR-10 stores the Profile checkbox list in `backend/data/stylePreferences.json`, keyed by user id, so the Prisma schema stays unchanged.

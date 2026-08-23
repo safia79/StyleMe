@@ -1,4 +1,6 @@
 // FR-02: User Login & Session
+// FR-08: Premium Subscription — refreshUser() so premium unlocks without logging in again
+// FR-10: Profile & Preferences — refreshUser() after saving name/city
 // Holds the current user so Navbar, protected pages, and forms stay in sync.
 
 import { createContext, useContext, useEffect, useState } from "react";

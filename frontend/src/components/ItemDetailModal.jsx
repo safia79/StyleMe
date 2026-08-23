@@ -1,4 +1,6 @@
 // FR-03: Clothing Upload & AI Tagging
+// FR-07: Wardrobe Dashboard (edit / favourite / delete)
+// FR-09: Outfit History — Times worn (wearCount)
 
 import { useState } from "react";
 import { apiRequest, imageSrc } from "../api.js";
@@ -150,6 +152,9 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
             </p>
             <p>
               <strong>Added:</strong> {new Date(item.uploadDate).toLocaleDateString()}
+            </p>
+            <p>
+              <strong>Times worn:</strong> {item.wearCount}
             </p>
             {error ? (
               <p className="form-error" role="alert">

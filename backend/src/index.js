@@ -4,6 +4,11 @@
 // FR-03: Clothing Upload & AI Tagging (wardrobe routes + /uploads)
 // FR-04: AI Outfit Recommendation
 // FR-06: Style Me (Generative AI Prompt)
+// FR-08: Premium Subscription
+// FR-09: Outfit History
+// FR-10: Profile & Preferences
+// FR-11: Wardrobe Analytics
+// FR-12: Manual Outfit Builder
 
 require("dotenv").config();
 
@@ -17,6 +22,8 @@ const wardrobeRoutes = require("./routes/wardrobe");
 const outfitRoutes = require("./routes/outfits");
 const recommendationRoutes = require("./routes/recommendations");
 const styleMeRoutes = require("./routes/styleme");
+const subscriptionRoutes = require("./routes/subscription");
+const profileRoutes = require("./routes/profile");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -70,6 +77,8 @@ app.use("/api/wardrobe", wardrobeRoutes);
 app.use("/api/outfits", outfitRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/styleme", styleMeRoutes);
+app.use("/api/subscription", subscriptionRoutes);
+app.use("/api/profile", profileRoutes);
 
 app.listen(PORT, () => {
   console.log(`StyleME backend listening on http://localhost:${PORT}`);

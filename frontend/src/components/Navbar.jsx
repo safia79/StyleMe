@@ -1,4 +1,9 @@
 // FR-02: User Login & Session
+// FR-08: Premium Subscription
+// FR-09: Outfit History
+// FR-10: Profile & Preferences
+// FR-11: Wardrobe Analytics
+// FR-12: Manual Outfit Builder
 import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";

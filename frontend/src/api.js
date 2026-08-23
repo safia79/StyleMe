@@ -1,6 +1,6 @@
 // FR-03: Clothing Upload & AI Tagging
 // Small helper so every request sends the session cookie to the backend.
-// FR-01 / FR-02 also use this file.
+// FR-01 / FR-02 / FR-08 / FR-09 / FR-10 / FR-11 / FR-12 also use this file.
 
 export const API_BASE = "http://localhost:3001";
 

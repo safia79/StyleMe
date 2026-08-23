@@ -6,6 +6,7 @@ import { imageSrc } from "../api.js";
 function OutfitResultCard({ outfit, onSave, saved, saving }) {
   return (
     <article className="outfit-card">
+      {outfit.name ? <h2 className="outfit-title">{outfit.name}</h2> : null}
       <div className="outfit-thumbs">
         {(outfit.items || []).map((item) => (
           <figure key={item.id} className="outfit-thumb">

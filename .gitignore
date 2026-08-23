@@ -18,6 +18,9 @@ node_modules/
 backend/uploads/*
 !backend/uploads/.gitkeep
 
+# Per-user style preferences JSON (FR-10, not a schema column)
+backend/data/stylePreferences.json
+
 # Frontend build output
 frontend/dist/
 frontend/dist-ssr/

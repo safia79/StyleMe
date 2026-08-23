@@ -1,4 +1,5 @@
-// FR-03: Clothing Upload & AI Tagging
+// FR-03: Clothing Upload & AI Tagging (Add Item)
+// FR-07: Wardrobe Dashboard (grid, search, filters, edit/favourite/delete)
 
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest, imageSrc } from "../api.js";

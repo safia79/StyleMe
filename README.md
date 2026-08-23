@@ -79,38 +79,37 @@ Then open **http://localhost:5173** in your browser (use `localhost`, not `127.0
 | FR-03 | Clothing Upload & AI Tagging | Fully working (AI tags are mocked) |
 | FR-04 | AI Outfit Recommendation | Fully working (recommendations are mocked) |
 | FR-05 | Weather-Based Filtering | Fully working |
-| FR-06 | Style Me (Generative AI Prompt) | Fully working (premium path mocked; upgrade UI is not a real payment) |
-| FR-07 | Not assigned yet | Not started |
-| FR-08 | Not assigned yet | Not started |
-| FR-09 | Not assigned yet | Not started |
-| FR-10 | Not assigned yet | Not started |
-| FR-11 | Not assigned yet | Not started |
-| FR-12 | Not assigned yet | Not started |
+| FR-06 | Style Me (Generative AI Prompt) | Fully working (premium path mocked) |
+| FR-07 | Wardrobe Dashboard | Fully working |
+| FR-08 | Premium Subscription | Fully working (checkout is mocked — not a real payment) |
+| FR-09 | Outfit History | Fully working |
+| FR-10 | Profile & Preferences | Fully working |
+| FR-11 | Wardrobe Analytics | Fully working |
+| FR-12 | Manual Outfit Builder | Fully working |
 
 Every source file includes a comment header with the FR it implements.
 
-**Working now:** Register, Login, session + Sign Out, Wardrobe upload/grid/edit/favourite/delete, Recommendations + weather banner, StyleMe (free gate + premium mock), Save Outfit, Outfit History.
+**Working now:** Register, Login, session + Sign Out, Wardrobe upload/grid/edit/favourite/delete, Recommendations + weather banner, StyleMe (free gate until upgrade), mock Subscription checkout, Save Outfit, Outfit History (wear / rename / delete), Profile settings, Wardrobe Analytics, Manual Outfit Builder.
 
-**Placeholder pages (routes work, features not built):** Outfit Builder, Analytics, Profile editing, Subscription checkout. Profile is read-only. Dashboard shortcuts go to the working features.
-
-To test StyleMe as premium (from the `backend` folder):
+To skip the mock checkout and mark an account premium from the `backend` folder:
 
 ```bash
 node scripts/set-premium.js you@example.com
 ```
 
-Then refresh the browser.
+Then refresh the browser. The in-app path is **Subscription → Upgrade to Premium**.
 
 ## Known bugs and demo caveats
 
 - **Use `http://localhost:5173`**, not `127.0.0.1`. The API cookie is scoped to `localhost`, so login will look like it failed if you mix the two.
 - **Restarting the backend logs everyone out.** Sessions live in memory, not the database.
 - **AI is mocked.** Clothing tags, outfit picks, and StyleMe tips are random/keyword rules, not a real vision or LLM API. Files are marked `// MOCK AI — replace with real recommendation/API logic later`.
-- **StyleMe is premium-only.** New accounts are `free`. There is no in-app payment. Use `scripts/set-premium.js`, then refresh. The Subscription page is a placeholder.
-- **City cannot be edited yet.** Weather uses the city entered at registration. Leave it blank (or use a fake city) and the banner shows “Weather data unavailable”.
+- **StyleMe is premium-only.** New accounts are `free`. Use **Subscription** (mock checkout) or `scripts/set-premium.js`. Nothing is charged; see `backend/src/mockPayment.js`.
+- **City is edited on Profile.** Weather on Recommendations uses the saved city. Leave it blank at register if you want; Profile save requires a city.
 - **Recommendations need variety.** You need at least 2 wardrobe items in **different categories** (for example Top + Shoes). Two tops alone cannot build an outfit.
 - **Hot-weather filter only drops Outerwear at 25°C+.** In a cool city the coat may still appear. That is expected.
 - **Cancelling Add Item after upload** can leave an unused file in `backend/uploads` until you delete the item (or remove the file by hand).
 - **Deleting a wardrobe item** does not clean old rows in Outfit History. Saved outfits may show fewer thumbnails if an item was removed.
-- **`wearCount` and `wornCount`** exist in the schema but are not used in the UI yet.
-- **Outfit Builder / Analytics** are labelled placeholders — do not demo them as finished features.
+- **Analytics needs 3+ items.** With fewer than 3 wardrobe items the page shows “Add more items to see your wardrobe analytics”.
+- **Style preferences are not a database column.** The users table has no preferences field (schema is locked). Checkboxes are stored in `backend/data/stylePreferences.json` by user id.
+- **Mock payment.** Tick “Simulate declined card” (or use `4000000000000002`) to demo “Your card was declined”. Any other fake card number succeeds.

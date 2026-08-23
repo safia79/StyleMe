@@ -77,26 +77,35 @@ function Recommendations() {
 
   return (
     <main className="page page-wide">
-      <h1>Recommendations</h1>
-      <p>Outfit suggestions based on your wardrobe and the weather.</p>
-      <WeatherBanner city={user?.city} onWeatherChange={handleWeatherChange} />
+      <header className="page-header">
+        <div>
+          <h1>Recommendations</h1>
+          <p>Outfit suggestions based on your wardrobe and the weather.</p>
+        </div>
+      </header>
 
-      <form className="recommend-bar" onSubmit={handleGenerate}>
-        <label className="form-field">
-          Occasion <span className="optional-tag">(optional)</span>
-          <select value={occasion} onChange={(event) => setOccasion(event.target.value)}>
-            <option value="">Any</option>
-            {OCCASIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button className="btn" type="submit" disabled={loading}>
-          {loading ? "Generating..." : "Generate Outfit"}
-        </button>
-      </form>
+      <div className="split-layout split-layout-compact">
+        <section className="panel-card">
+          <h2 className="panel-heading">Today's weather</h2>
+          <WeatherBanner city={user?.city} onWeatherChange={handleWeatherChange} />
+        </section>
+        <form className="panel-card recommend-bar" onSubmit={handleGenerate}>
+          <label className="form-field">
+            Occasion <span className="optional-tag">(optional)</span>
+            <select value={occasion} onChange={(event) => setOccasion(event.target.value)}>
+              <option value="">Any</option>
+              {OCCASIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="btn" type="submit" disabled={loading}>
+            {loading ? "Generating..." : "Generate Outfit"}
+          </button>
+        </form>
+      </div>
 
       {error ? (
         <p className="form-error" role="alert">

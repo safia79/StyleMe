@@ -14,8 +14,8 @@ router.use(requireAuth);
 
 const uploadsDir = path.join(__dirname, "..", "..", "uploads");
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png"];
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/jpg"];
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
@@ -33,7 +33,7 @@ const upload = multer({
     const typeOk = ALLOWED_TYPES.includes(file.mimetype);
     const extOk = ALLOWED_EXTENSIONS.includes(ext);
     if (!typeOk || !extOk) {
-      return cb(new Error("Please upload a JPG or PNG image."));
+      return cb(new Error("Please upload a JPG, PNG, or WEBP image."));
     }
     cb(null, true);
   },
@@ -63,7 +63,7 @@ router.post("/upload", async (req, res) => {
     await runUpload(req, res);
 
     if (!req.file) {
-      return res.status(400).json({ error: "Please choose a JPG or PNG image." });
+      return res.status(400).json({ error: "Please choose a JPG, PNG, or WEBP image." });
     }
 
     const imageUrl = `/uploads/${req.file.filename}`;
@@ -76,7 +76,7 @@ router.post("/upload", async (req, res) => {
     if (err.code === "LIMIT_FILE_SIZE") {
       return res.status(400).json({ error: "Image must be 10MB or smaller." });
     }
-    if (err.message === "Please upload a JPG or PNG image.") {
+    if (err.message === "Please upload a JPG, PNG, or WEBP image.") {
       return res.status(400).json({ error: err.message });
     }
     console.error("Upload error:", err);

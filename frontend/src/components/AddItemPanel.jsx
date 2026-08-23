@@ -5,7 +5,7 @@ import { apiRequest, imageSrc, uploadImage } from "../api.js";
 import { CATEGORIES, COLOURS, STYLES, FORMALITIES, SEASONS } from "../tagOptions.js";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const ALLOWED_TYPES = ["image/jpeg", "image/png"];
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function TagSelect({ label, name, value, options, onChange }) {
   return (
@@ -38,9 +38,9 @@ function AddItemPanel({ onClose, onSaved }) {
   const [dragOver, setDragOver] = useState(false);
 
   function validateFile(file) {
-    if (!file) return "Please choose a JPG or PNG image.";
-    const typeOk = ALLOWED_TYPES.includes(file.type) || /\.(jpe?g|png)$/i.test(file.name);
-    if (!typeOk) return "Please upload a JPG or PNG image.";
+    if (!file) return "Please choose a JPG, PNG, or WEBP image.";
+    const typeOk = ALLOWED_TYPES.includes(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name);
+    if (!typeOk) return "Please upload a JPG, PNG, or WEBP image.";
     if (file.size > MAX_FILE_BYTES) return "Image must be 10MB or smaller.";
     return "";
   }
@@ -127,12 +127,12 @@ function AddItemPanel({ onClose, onSaved }) {
             onDrop={handleDrop}
           >
             <p>Drag and drop a clothing photo here, or choose a file.</p>
-            <p className="dropzone-hint">JPG or PNG, up to 10MB.</p>
+            <p className="dropzone-hint">JPG, PNG, or WEBP, up to 10MB.</p>
             <label className="btn file-btn">
               Choose file
               <input
                 type="file"
-                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                 hidden
                 onChange={(event) => {
                   const file = event.target.files[0];

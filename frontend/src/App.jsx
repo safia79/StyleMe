@@ -1,5 +1,10 @@
 // FR-01: User Registration
 // FR-02: User Login & Session
+// FR-08: Premium Subscription
+// FR-09: Outfit History
+// FR-10: Profile & Preferences
+// FR-11: Wardrobe Analytics
+// FR-12: Manual Outfit Builder
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./AuthContext.jsx";
 import Navbar from "./components/Navbar.jsx";
@@ -34,8 +39,12 @@ function CatchAll() {
 function App() {
   return (
     <div className="app">
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <Navbar />
-      <Routes>
+      <div id="main-content" tabIndex={-1}>
+        <Routes>
         <Route element={<PublicOnlyRoute />}>
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
@@ -55,7 +64,8 @@ function App() {
         </Route>
 
         <Route path="*" element={<CatchAll />} />
-      </Routes>
+        </Routes>
+      </div>
     </div>
   );
 }
