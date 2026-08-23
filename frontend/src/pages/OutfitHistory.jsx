@@ -121,6 +121,7 @@ function OutfitHistory() {
     <main className="page page-wide">
       <header className="page-header">
         <div>
+          <p className="page-kicker">Saved looks</p>
           <h1>Outfit History</h1>
           <p>Looks you have saved from Recommendations or StyleMe. Newest first.</p>
         </div>

@@ -79,6 +79,7 @@ function Recommendations() {
     <main className="page page-wide">
       <header className="page-header">
         <div>
+          <p className="page-kicker">Daily looks</p>
           <h1>Recommendations</h1>
           <p>Outfit suggestions based on your wardrobe and the weather.</p>
         </div>

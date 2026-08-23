@@ -3,6 +3,16 @@
 
 import { useEffect, useState } from "react";
 import { fetchCityWeather } from "../weather.js";
+import UiIcon from "./UiIcons.jsx";
+
+function weatherIconName(conditions) {
+  const text = String(conditions || "").toLowerCase();
+  if (text.includes("snow") || text.includes("icy")) return "snow";
+  if (text.includes("thunder") || text.includes("storm")) return "storm";
+  if (text.includes("rain") || text.includes("drizzle") || text.includes("shower")) return "rain";
+  if (text.includes("clear")) return "sun";
+  return "cloud";
+}
 
 function WeatherBanner({ city, onWeatherChange }) {
   const [status, setStatus] = useState(city && city.trim() ? "loading" : "unavailable"); // loading | ok | unavailable
@@ -55,10 +65,15 @@ function WeatherBanner({ city, onWeatherChange }) {
 
   return (
     <div className="weather-banner">
-      <strong>{place}</strong>
-      <span>
-        {weather.temperature}°C · {weather.conditions}
+      <span className="weather-glyph">
+        <UiIcon name={weatherIconName(weather.conditions)} size={18} />
       </span>
+      <div className="weather-banner-copy">
+        <strong>{place}</strong>
+        <span>
+          {weather.temperature}°C · {weather.conditions}
+        </span>
+      </div>
     </div>
   );
 }

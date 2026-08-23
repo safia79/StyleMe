@@ -89,6 +89,7 @@ function Analytics() {
     <main className="page page-wide">
       <header className="page-header">
         <div>
+          <p className="page-kicker">Insights</p>
           <h1>Analytics</h1>
           <p>A live snapshot of your wardrobe, calculated from the items you have uploaded.</p>
         </div>

@@ -123,6 +123,7 @@ function OutfitBuilder() {
     <main className="page page-wide">
       <header className="page-header">
         <div>
+          <p className="page-kicker">Build by hand</p>
           <h1>Outfit Builder</h1>
           <p>Pick pieces for each slot, then save a named look to Outfit History.</p>
         </div>

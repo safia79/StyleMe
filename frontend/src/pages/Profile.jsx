@@ -89,7 +89,8 @@ function Profile() {
 
   if (loading) {
     return (
-      <main className="page page-narrow">
+      <main className="page page-wide">
+        <p className="page-kicker">Account</p>
         <h1>Profile</h1>
         <p>Loading your settings...</p>
       </main>
@@ -97,9 +98,16 @@ function Profile() {
   }
 
   return (
-    <main className="page page-narrow">
-      <h1>Profile</h1>
-      <p>Update your display name, city, and style preferences. Changes apply without leaving this page.</p>
+    <main className="page page-wide">
+      <header className="page-header">
+        <div>
+          <p className="page-kicker">Account</p>
+          <h1>Profile</h1>
+          <p>Update your display name, city, and style preferences. Changes apply without leaving this page.</p>
+        </div>
+      </header>
+
+      <section className="panel-card form-page-card">
 
       {success ? (
         <p className="toast-banner" role="status">
@@ -172,6 +180,7 @@ function Profile() {
           {saving ? "Saving..." : "Save changes"}
         </button>
       </form>
+      </section>
     </main>
   );
 }

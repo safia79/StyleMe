@@ -74,6 +74,7 @@ function Wardrobe() {
     <main className="page page-wide">
       <div className="page-header">
         <div>
+          <p className="page-kicker">Your closet</p>
           <h1>Wardrobe</h1>
           <p>View and manage your uploaded clothing items.</p>
         </div>

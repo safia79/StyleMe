@@ -4,149 +4,165 @@
 // FR-10: Profile & Preferences
 // FR-11: Wardrobe Analytics
 // FR-12: Manual Outfit Builder
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
+import { apiRequest, imageSrc } from "../api.js";
+import WeatherBanner from "../components/WeatherBanner.jsx";
+import UiIcon from "../components/UiIcons.jsx";
 
-function ShortcutIcon({ name }) {
-  const common = {
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: "1.75",
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-    "aria-hidden": "true",
-    focusable: "false",
-  };
-
-  const paths = {
-    wardrobe: (
-      <>
-        <path d="M4 4h16v16H4z" />
-        <path d="M12 4v16" />
-        <path d="M8 12h.01" />
-        <path d="M16 12h.01" />
-      </>
-    ),
-    recommendations: (
-      <>
-        <circle cx="12" cy="12" r="8" />
-        <path d="M12 8v4l3 2" />
-      </>
-    ),
-    styleme: (
-      <>
-        <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />
-      </>
-    ),
-    history: (
-      <>
-        <path d="M4 7h16" />
-        <path d="M4 12h16" />
-        <path d="M4 17h10" />
-      </>
-    ),
-    subscription: (
-      <>
-        <rect x="3" y="6" width="18" height="12" rx="2" />
-        <path d="M3 10h18" />
-      </>
-    ),
-    profile: (
-      <>
-        <circle cx="12" cy="8" r="3.2" />
-        <path d="M5 19c1.4-3.2 3.8-4.8 7-4.8s5.6 1.6 7 4.8" />
-      </>
-    ),
-    analytics: (
-      <>
-        <path d="M5 19V10" />
-        <path d="M12 19V5" />
-        <path d="M19 19v-7" />
-      </>
-    ),
-    builder: (
-      <>
-        <path d="M4 17l8-12 8 12H4z" />
-        <path d="M9.5 17l2.5-4 2.5 4" />
-      </>
-    ),
-  };
-
-  return <svg {...common}>{paths[name]}</svg>;
-}
+const SHORTCUTS = [
+  {
+    to: "/wardrobe",
+    icon: "wardrobe",
+    title: "Wardrobe",
+    description: "Upload and tag clothing",
+    cta: "Open wardrobe",
+  },
+  {
+    to: "/recommendations",
+    icon: "recommendations",
+    title: "Recommendations",
+    description: "Generate an outfit",
+    cta: "Get a look",
+  },
+  {
+    to: "/styleme",
+    icon: "sparkle",
+    title: "StyleMe",
+    description: "Describe a look (premium)",
+    cta: "Describe a look",
+  },
+  {
+    to: "/outfit-history",
+    icon: "history",
+    title: "Outfit History",
+    description: "Saved looks",
+    cta: "View history",
+  },
+  {
+    to: "/subscription",
+    icon: "subscription",
+    title: "Subscription",
+    descriptionKey: "subscription",
+    cta: "Manage plan",
+  },
+  {
+    to: "/profile",
+    icon: "user",
+    title: "Profile",
+    description: "Name, city, and style preferences",
+    cta: "Edit profile",
+  },
+  {
+    to: "/analytics",
+    icon: "analytics",
+    title: "Analytics",
+    description: "Wardrobe charts",
+    cta: "See charts",
+  },
+  {
+    to: "/outfit-builder",
+    icon: "builder",
+    title: "Outfit Builder",
+    description: "Build a look by hand",
+    cta: "Start building",
+  },
+];
 
 function Dashboard() {
   const { user } = useAuth();
+  const [recentOutfits, setRecentOutfits] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRecent() {
+      const result = await apiRequest("/api/outfits");
+      if (cancelled || !result.ok) return;
+      const outfits = result.data.outfits || [];
+      setRecentOutfits(outfits.slice(0, 3));
+    }
+
+    loadRecent();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main className="page page-wide">
-      <header className="page-header">
-        <div>
-          <h1>Dashboard</h1>
-          <p>Welcome back, {user?.name}.</p>
-          <p>You are signed in as {user?.email}.</p>
-        </div>
-      </header>
+      <div className="dashboard-hero">
+        <header className="page-header">
+          <div>
+            <p className="page-kicker">Overview</p>
+            <h1>Dashboard</h1>
+            <p>Welcome back, {user?.name}.</p>
+            <p>You are signed in as {user?.email}.</p>
+          </div>
+        </header>
+
+        <section className="panel-card weather-summary-card">
+          <div className="weather-summary-label">
+            <span className="shortcut-icon weather-summary-icon">
+              <UiIcon name="weather" size={20} />
+            </span>
+            <h2 className="panel-heading">Today&apos;s weather</h2>
+          </div>
+          <WeatherBanner city={user?.city} />
+        </section>
+      </div>
 
       <div className="shortcut-grid">
-        <Link className="shortcut-card" to="/wardrobe">
-          <span className="shortcut-icon">
-            <ShortcutIcon name="wardrobe" />
-          </span>
-          <strong>Wardrobe</strong>
-          <span>Upload and tag clothing</span>
-        </Link>
-        <Link className="shortcut-card" to="/recommendations">
-          <span className="shortcut-icon">
-            <ShortcutIcon name="recommendations" />
-          </span>
-          <strong>Recommendations</strong>
-          <span>Generate an outfit</span>
-        </Link>
-        <Link className="shortcut-card" to="/styleme">
-          <span className="shortcut-icon">
-            <ShortcutIcon name="styleme" />
-          </span>
-          <strong>StyleMe</strong>
-          <span>Describe a look (premium)</span>
-        </Link>
-        <Link className="shortcut-card" to="/outfit-history">
-          <span className="shortcut-icon">
-            <ShortcutIcon name="history" />
-          </span>
-          <strong>Outfit History</strong>
-          <span>Saved looks</span>
-        </Link>
-        <Link className="shortcut-card" to="/subscription">
-          <span className="shortcut-icon">
-            <ShortcutIcon name="subscription" />
-          </span>
-          <strong>Subscription</strong>
-          <span>{user?.accountType === "premium" ? "You are premium" : "Upgrade to premium"}</span>
-        </Link>
-        <Link className="shortcut-card" to="/profile">
-          <span className="shortcut-icon">
-            <ShortcutIcon name="profile" />
-          </span>
-          <strong>Profile</strong>
-          <span>Name, city, and style preferences</span>
-        </Link>
-        <Link className="shortcut-card" to="/analytics">
-          <span className="shortcut-icon">
-            <ShortcutIcon name="analytics" />
-          </span>
-          <strong>Analytics</strong>
-          <span>Wardrobe charts</span>
-        </Link>
-        <Link className="shortcut-card" to="/outfit-builder">
-          <span className="shortcut-icon">
-            <ShortcutIcon name="builder" />
-          </span>
-          <strong>Outfit Builder</strong>
-          <span>Build a look by hand</span>
-        </Link>
+        {SHORTCUTS.map((item) => (
+          <Link className="shortcut-card" to={item.to} key={item.to}>
+            <span className="shortcut-icon">
+              <UiIcon name={item.icon} size={22} />
+            </span>
+            <strong>{item.title}</strong>
+            <span>
+              {item.descriptionKey === "subscription"
+                ? user?.accountType === "premium"
+                  ? "You are premium"
+                  : "Upgrade to premium"
+                : item.description}
+            </span>
+            <span className="shortcut-cta">
+              {item.cta}
+              <UiIcon name="arrow" size={14} />
+            </span>
+          </Link>
+        ))}
       </div>
+
+      {recentOutfits.length > 0 ? (
+        <section className="section-block">
+          <div className="section-heading">
+            <h2>Recent Recommendations</h2>
+            <Link to="/outfit-history">View all</Link>
+          </div>
+          <div className="recent-grid">
+            {recentOutfits.map((outfit) => (
+              <Link className="recent-card" to="/outfit-history" key={outfit.id}>
+                <div className="recent-thumbs">
+                  {(outfit.items || []).slice(0, 4).map((item) => (
+                    <img
+                      key={item.id}
+                      src={imageSrc(item.imageUrl)}
+                      alt={`${item.colour} ${item.category}`}
+                    />
+                  ))}
+                </div>
+                <strong>{outfit.name}</strong>
+                <span>
+                  {outfit.occasionTag}
+                  {outfit.createdAt ? ` · ${new Date(outfit.createdAt).toLocaleDateString()}` : ""}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

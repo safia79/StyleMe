@@ -78,9 +78,16 @@ function Subscription() {
   }
 
   return (
-    <main className="page page-narrow">
-      <h1>Subscription</h1>
-      <p>Unlock StyleMe and other premium features.</p>
+    <main className="page page-wide">
+      <header className="page-header">
+        <div>
+          <p className="page-kicker">Membership</p>
+          <h1>Subscription</h1>
+          <p>Unlock StyleMe and other premium features.</p>
+        </div>
+      </header>
+
+      <section className="panel-card form-page-card">
 
       <div className={`plan-banner ${isPremium ? "plan-banner-premium" : ""}`}>
         <strong>{isPremium ? "Premium" : "Free"}</strong>
@@ -176,6 +183,7 @@ function Subscription() {
       <p className="form-switch">
         After upgrading, open <Link to="/styleme">StyleMe</Link> — no extra login needed.
       </p>
+      </section>
     </main>
   );
 }

@@ -103,6 +103,7 @@ function StyleMe() {
     <main className="page page-wide">
       <header className="page-header">
         <div>
+          <p className="page-kicker">Premium styling</p>
           <h1>StyleMe</h1>
           <p>Describe an occasion or look and get a styled outfit from your wardrobe.</p>
         </div>
