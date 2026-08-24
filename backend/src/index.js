@@ -7,6 +7,7 @@
 // FR-08: Premium Subscription
 // FR-09: Outfit History
 // FR-10: Profile & Preferences
+// FR-05: Weather-Based Filtering (Open-Meteo via /api/weather)
 // FR-11: Wardrobe Analytics
 // FR-12: Manual Outfit Builder
 
@@ -24,6 +25,7 @@ const recommendationRoutes = require("./routes/recommendations");
 const styleMeRoutes = require("./routes/styleme");
 const subscriptionRoutes = require("./routes/subscription");
 const profileRoutes = require("./routes/profile");
+const weatherRoutes = require("./routes/weather");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -79,6 +81,7 @@ app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/styleme", styleMeRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/weather", weatherRoutes);
 
 app.listen(PORT, () => {
   console.log(`StyleME backend listening on http://localhost:${PORT}`);

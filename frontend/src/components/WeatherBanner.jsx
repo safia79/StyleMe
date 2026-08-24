@@ -33,7 +33,8 @@ function WeatherBanner({ city, onWeatherChange }) {
           setStatus("unavailable");
           if (onWeatherChange) onWeatherChange(null);
         }
-      } catch {
+      } catch (err) {
+        console.error("Weather data unavailable — caught error:", err);
         if (!cancelled) {
           setStatus("unavailable");
           if (onWeatherChange) onWeatherChange(null);
