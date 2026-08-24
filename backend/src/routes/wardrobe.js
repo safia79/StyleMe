@@ -48,13 +48,41 @@ function runUpload(req, res) {
   });
 }
 
-function deleteUploadFile(imageUrl) {
+function deleteUploadFile(imageUrl, userId) {
   if (!imageUrl || !imageUrl.startsWith("/uploads/")) return;
   const filename = path.basename(imageUrl);
+  if (!filename.startsWith(`${userId}-`)) return;
   const filePath = path.join(uploadsDir, filename);
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }
+}
+
+function parseItemId(value) {
+  const id = Number(value);
+  return Number.isInteger(id) ? id : null;
+}
+
+async function findOwnedItem(req, res) {
+  const id = parseItemId(req.params.id);
+  if (id === null) {
+    res.status(400).json({ error: "Item not found." });
+    return null;
+  }
+
+  const item = await prisma.wardrobeItem.findFirst({
+    where: { id, userId: req.session.userId },
+  });
+  if (!item) {
+    res.status(404).json({ error: "Item not found." });
+    return null;
+  }
+  return item;
+}
+
+function outfitContainsItem(itemIds, itemId) {
+  if (!Array.isArray(itemIds)) return false;
+  return itemIds.some((value) => Number(value) === itemId);
 }
 
 // Upload the photo, then run the mock AI and return suggested tags
@@ -136,49 +164,31 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Edit tags and/or favourite flag
+// Edit tags (same dropdown validation as the original upload form)
 router.patch("/:id", async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id)) {
-      return res.status(400).json({ error: "Item not found." });
-    }
+    const existing = await findOwnedItem(req, res);
+    if (!existing) return;
 
-    const existing = await prisma.wardrobeItem.findFirst({
-      where: { id, userId: req.session.userId },
-    });
-    if (!existing) {
-      return res.status(404).json({ error: "Item not found." });
-    }
-
-    const data = {};
-
-    if (req.body.isFavourite !== undefined) {
-      data.isFavourite = Boolean(req.body.isFavourite);
-    }
-
-    const maybeTags = {
-      category: req.body.category ?? existing.category,
-      colour: req.body.colour ?? existing.colour,
-      style: req.body.style ?? existing.style,
-      formality: req.body.formality ?? existing.formality,
-      season: req.body.season ?? existing.season,
+    const tags = {
+      category: req.body.category,
+      colour: req.body.colour,
+      style: req.body.style,
+      formality: req.body.formality,
+      season: req.body.season,
     };
 
-    const tagFieldsChanged = ["category", "colour", "style", "formality", "season"].some(
-      (field) => req.body[field] !== undefined,
-    );
-
-    if (tagFieldsChanged) {
-      if (!isValidTags(maybeTags)) {
-        return res.status(400).json({ error: "Please choose a tag from each dropdown." });
-      }
-      Object.assign(data, maybeTags);
+    if (!isValidTags(tags)) {
+      return res.status(400).json({ error: "Please choose a tag from each dropdown." });
     }
 
-    const item = await prisma.wardrobeItem.update({
-      where: { id },
-      data,
+    await prisma.wardrobeItem.updateMany({
+      where: { id: existing.id, userId: req.session.userId },
+      data: tags,
+    });
+
+    const item = await prisma.wardrobeItem.findFirst({
+      where: { id: existing.id, userId: req.session.userId },
     });
 
     return res.json({ item });
@@ -188,22 +198,48 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
+// Flip isFavourite true/false for one owned item
+router.post("/:id/favourite", async (req, res) => {
+  try {
+    const existing = await findOwnedItem(req, res);
+    if (!existing) return;
+
+    await prisma.wardrobeItem.updateMany({
+      where: { id: existing.id, userId: req.session.userId },
+      data: { isFavourite: !existing.isFavourite },
+    });
+
+    const item = await prisma.wardrobeItem.findFirst({
+      where: { id: existing.id, userId: req.session.userId },
+    });
+
+    return res.json({ item });
+  } catch (err) {
+    console.error("Favourite item error:", err);
+    return res.status(500).json({ error: "Could not update favourite." });
+  }
+});
+
 router.delete("/:id", async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id)) {
-      return res.status(400).json({ error: "Item not found." });
-    }
+    const existing = await findOwnedItem(req, res);
+    if (!existing) return;
 
-    const existing = await prisma.wardrobeItem.findFirst({
-      where: { id, userId: req.session.userId },
+    const outfits = await prisma.savedOutfit.findMany({
+      where: { userId: req.session.userId },
+      select: { itemIds: true },
     });
-    if (!existing) {
-      return res.status(404).json({ error: "Item not found." });
+    const usedCount = outfits.filter((outfit) => outfitContainsItem(outfit.itemIds, existing.id)).length;
+    if (usedCount > 0) {
+      return res.status(409).json({
+        error: `This item is used in ${usedCount} saved outfit${usedCount === 1 ? "" : "s"}`,
+      });
     }
 
-    await prisma.wardrobeItem.delete({ where: { id } });
-    deleteUploadFile(existing.imageUrl);
+    await prisma.wardrobeItem.deleteMany({
+      where: { id: existing.id, userId: req.session.userId },
+    });
+    deleteUploadFile(existing.imageUrl, req.session.userId);
 
     return res.json({ message: "Item deleted" });
   } catch (err) {

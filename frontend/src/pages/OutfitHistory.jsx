@@ -3,14 +3,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest, imageSrc } from "../api.js";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
+import { ButtonSpinner, EmptyState, LoadingState } from "../components/StatusPanel.jsx";
+import { useToast } from "../ToastContext.jsx";
 
 function OutfitHistory() {
+  const { showToast } = useToast();
   const [outfits, setOutfits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [draftName, setDraftName] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,8 +48,10 @@ function OutfitHistory() {
       setError("Please enter an outfit name.");
       return;
     }
+    if (busyId) return;
 
     setBusyId(outfitId);
+    setError("");
     const result = await apiRequest(`/api/outfits/${outfitId}`, {
       method: "PATCH",
       body: { name },
@@ -60,6 +67,7 @@ function OutfitHistory() {
       current.map((outfit) => (outfit.id === outfitId ? result.data.outfit : outfit)),
     );
     setEditingId(null);
+    showToast("Outfit renamed.");
   }
 
   function handleRenameKey(event, outfitId) {
@@ -73,6 +81,7 @@ function OutfitHistory() {
   }
 
   async function handleWear(outfitId) {
+    if (busyId) return;
     setBusyId(outfitId);
     setError("");
     const result = await apiRequest(`/api/outfits/${outfitId}/wear`, { method: "POST" });
@@ -97,24 +106,25 @@ function OutfitHistory() {
         };
       }),
     );
+    showToast("Marked as worn today.");
   }
 
-  async function handleDelete(outfit) {
-    const confirmed = window.confirm(
-      `Delete "${outfit.name}"? Your clothing items will stay in the wardrobe.`,
-    );
-    if (!confirmed) return;
-
+  async function confirmDelete() {
+    if (!pendingDelete || busyId) return;
+    const outfit = pendingDelete;
     setBusyId(outfit.id);
     const result = await apiRequest(`/api/outfits/${outfit.id}`, { method: "DELETE" });
     setBusyId(null);
 
     if (!result.ok) {
       setError(result.data.error || "Could not delete this outfit.");
+      setPendingDelete(null);
       return;
     }
 
     setOutfits((current) => current.filter((row) => row.id !== outfit.id));
+    setPendingDelete(null);
+    showToast("Outfit deleted.");
   }
 
   return (
@@ -127,7 +137,7 @@ function OutfitHistory() {
         </div>
       </header>
 
-      {loading ? <p>Loading saved outfits...</p> : null}
+      {loading ? <LoadingState message="Loading saved outfits..." /> : null}
       {error ? (
         <p className="form-error" role="alert">
           {error}
@@ -135,11 +145,23 @@ function OutfitHistory() {
       ) : null}
 
       {!loading && outfits.length === 0 ? (
-        <div className="placeholder-note">
-          No saved outfits yet. Generate one on <Link to="/recommendations">Recommendations</Link> or{" "}
-          <Link to="/styleme">StyleMe</Link>.
-        </div>
-      ) : (
+        <EmptyState
+          title="No saved outfits yet"
+          message="Generate a look, then save it here to wear again later."
+          action={
+            <>
+              <Link className="btn" to="/recommendations">
+                Recommendations
+              </Link>
+              <Link className="btn btn-secondary" to="/styleme">
+                StyleMe
+              </Link>
+            </>
+          }
+        />
+      ) : null}
+
+      {!loading && outfits.length > 0 ? (
         <div className="outfit-list">
           {outfits.map((outfit) => (
             <article key={outfit.id} className="outfit-card">
@@ -181,13 +203,14 @@ function OutfitHistory() {
                   disabled={busyId === outfit.id}
                   onClick={() => handleWear(outfit.id)}
                 >
-                  Wear Today
+                  {busyId === outfit.id ? <ButtonSpinner /> : null}
+                  {busyId === outfit.id ? "Saving..." : "Wear Today"}
                 </button>
                 <button
                   className="btn btn-danger"
                   type="button"
                   disabled={busyId === outfit.id}
-                  onClick={() => handleDelete(outfit)}
+                  onClick={() => setPendingDelete(outfit)}
                 >
                   Delete
                 </button>
@@ -195,7 +218,18 @@ function OutfitHistory() {
             </article>
           ))}
         </div>
-      )}
+      ) : null}
+
+      {pendingDelete ? (
+        <ConfirmDialog
+          title="Delete this outfit?"
+          message={`"${pendingDelete.name}" will be removed from history. Your clothing items will stay in the wardrobe.`}
+          confirmLabel="Delete outfit"
+          busy={busyId === pendingDelete.id}
+          onConfirm={confirmDelete}
+          onCancel={() => setPendingDelete(null)}
+        />
+      ) : null}
     </main>
   );
 }

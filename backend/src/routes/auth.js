@@ -1,9 +1,11 @@
 // FR-01: User Registration
 // FR-02: User Login & Session
+// Forgot password / reset password (dev token in API response until email exists)
 
 const express = require("express");
 const bcrypt = require("bcrypt");
 const prisma = require("../db");
+const { createResetToken, consumeResetToken } = require("../passwordReset");
 
 const router = express.Router();
 
@@ -169,6 +171,75 @@ router.get("/me", async (req, res) => {
     return res.json({ user });
   } catch (err) {
     console.error("Session check error:", err);
+    return res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
+});
+
+// Forgot password: generate a reset token. No real email service in this project.
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    if (!email || !EMAIL_PATTERN.test(email)) {
+      return res.status(400).json({ error: "Please enter a valid email address." });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    const payload = {
+      message: "If that email is registered, a reset token has been generated.",
+    };
+
+    if (user) {
+      const resetToken = createResetToken(user.id);
+      // DEV ONLY — in production this would be emailed, never returned directly
+      payload.resetToken = resetToken;
+      payload.devNote = "DEV ONLY — in production this would be emailed, never returned directly";
+    }
+
+    return res.json(payload);
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    return res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
+});
+
+router.post("/reset-password", async (req, res) => {
+  try {
+    const token = typeof req.body.token === "string" ? req.body.token.trim() : "";
+    const password =
+      typeof req.body.password === "string"
+        ? req.body.password
+        : typeof req.body.newPassword === "string"
+          ? req.body.newPassword
+          : "";
+
+    if (!token) {
+      return res.status(400).json({ error: "Please enter the reset token." });
+    }
+    if (!password) {
+      return res.status(400).json({ error: "Please enter a password." });
+    }
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ error: "Password must be at least 8 characters." });
+    }
+
+    const userId = consumeResetToken(token);
+    if (!userId) {
+      return res.status(400).json({ error: "This reset link is invalid or has expired." });
+    }
+
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const updated = await prisma.user.updateMany({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    if (updated.count === 0) {
+      return res.status(400).json({ error: "This reset link is invalid or has expired." });
+    }
+
+    return res.json({ message: "Password updated. You can log in with your new password." });
+  } catch (err) {
+    console.error("Reset password error:", err);
     return res.status(500).json({ error: "Something went wrong. Please try again." });
   }
 });

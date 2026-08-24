@@ -4,6 +4,7 @@
 
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
+import { LoadingState } from "./StatusPanel.jsx";
 
 function PublicOnlyRoute() {
   const { user, loading } = useAuth();
@@ -11,7 +12,7 @@ function PublicOnlyRoute() {
   if (loading) {
     return (
       <main className="page">
-        <p>Loading...</p>
+        <LoadingState message="Loading..." />
       </main>
     );
   }

@@ -12,6 +12,7 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import PublicOnlyRoute from "./components/PublicOnlyRoute.jsx";
 import Register from "./pages/Register.jsx";
 import Login from "./pages/Login.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Wardrobe from "./pages/Wardrobe.jsx";
 import Recommendations from "./pages/Recommendations.jsx";
@@ -48,6 +49,7 @@ function App() {
         <Route element={<PublicOnlyRoute />}>
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
         </Route>
 
         <Route element={<ProtectedRoute />}>

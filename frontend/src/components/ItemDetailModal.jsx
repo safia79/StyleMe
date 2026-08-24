@@ -5,6 +5,9 @@
 import { useState } from "react";
 import { apiRequest, imageSrc } from "../api.js";
 import { CATEGORIES, COLOURS, STYLES, FORMALITIES, SEASONS } from "../tagOptions.js";
+import ConfirmDialog from "./ConfirmDialog.jsx";
+import { ButtonSpinner } from "./StatusPanel.jsx";
+import UiIcon from "./UiIcons.jsx";
 
 function TagSelect({ label, name, value, options, onChange }) {
   return (
@@ -23,6 +26,7 @@ function TagSelect({ label, name, value, options, onChange }) {
 
 function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [tags, setTags] = useState({
     category: item.category,
     colour: item.colour,
@@ -39,6 +43,7 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
 
   async function handleSave(event) {
     event.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError("");
 
@@ -54,17 +59,17 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
       return;
     }
 
-    onUpdated(result.data.item);
+    onUpdated(result.data.item, "Item details saved.");
     setEditing(false);
   }
 
   async function handleFavourite() {
+    if (busy) return;
     setBusy(true);
     setError("");
 
-    const result = await apiRequest(`/api/wardrobe/${item.id}`, {
-      method: "PATCH",
-      body: { isFavourite: !item.isFavourite },
+    const result = await apiRequest(`/api/wardrobe/${item.id}/favourite`, {
+      method: "POST",
     });
 
     setBusy(false);
@@ -74,13 +79,14 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
       return;
     }
 
-    onUpdated(result.data.item);
+    onUpdated(
+      result.data.item,
+      result.data.item.isFavourite ? "Added to favourites." : "Removed from favourites.",
+    );
   }
 
   async function handleDelete() {
-    const confirmed = window.confirm("Delete this item from your wardrobe?");
-    if (!confirmed) return;
-
+    if (busy) return;
     setBusy(true);
     setError("");
 
@@ -88,6 +94,7 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
     setBusy(false);
 
     if (!result.ok) {
+      setConfirmingDelete(false);
       setError(result.data.error || "Could not delete this item.");
       return;
     }
@@ -96,11 +103,11 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={busy ? undefined : onClose}>
       <div className="modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="item-detail-title">
         <div className="modal-header">
           <h2 id="item-detail-title">Item details</h2>
-          <button type="button" className="btn-ghost" onClick={onClose}>
+          <button type="button" className="btn-ghost" onClick={onClose} disabled={busy}>
             Close
           </button>
         </div>
@@ -123,9 +130,10 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
             ) : null}
             <div className="button-row">
               <button className="btn" type="submit" disabled={busy}>
+                {busy ? <ButtonSpinner /> : null}
                 {busy ? "Saving..." : "Save changes"}
               </button>
-              <button className="btn btn-secondary" type="button" onClick={() => setEditing(false)}>
+              <button className="btn btn-secondary" type="button" onClick={() => setEditing(false)} disabled={busy}>
                 Cancel
               </button>
             </div>
@@ -165,16 +173,34 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
               <button className="btn" type="button" onClick={() => setEditing(true)} disabled={busy}>
                 Edit
               </button>
-              <button className="btn btn-secondary" type="button" onClick={handleFavourite} disabled={busy}>
-                {item.isFavourite ? "Remove favourite" : "Favourite"}
+              <button
+                className={`btn btn-secondary fav-button ${item.isFavourite ? "is-on" : ""}`}
+                type="button"
+                onClick={handleFavourite}
+                disabled={busy}
+                aria-pressed={item.isFavourite}
+              >
+                {busy ? <ButtonSpinner /> : <UiIcon name={item.isFavourite ? "heartFilled" : "heart"} size={16} />}
+                {item.isFavourite ? "Favourited" : "Favourite"}
               </button>
-              <button className="btn btn-danger" type="button" onClick={handleDelete} disabled={busy}>
+              <button className="btn btn-danger" type="button" onClick={() => setConfirmingDelete(true)} disabled={busy}>
                 Delete
               </button>
             </div>
           </div>
         )}
       </div>
+
+      {confirmingDelete ? (
+        <ConfirmDialog
+          title="Delete this item?"
+          message="This piece will be removed from your wardrobe. This cannot be undone."
+          confirmLabel="Delete item"
+          busy={busy}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      ) : null}
     </div>
   );
 }

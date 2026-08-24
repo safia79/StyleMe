@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
 import { apiRequest } from "../api.js";
+import { ButtonSpinner } from "../components/StatusPanel.jsx";
+import { useToast } from "../ToastContext.jsx";
 
 function formatDate(value) {
   if (!value) return "";
@@ -12,6 +14,7 @@ function formatDate(value) {
 
 function Subscription() {
   const { user, refreshUser } = useAuth();
+  const { showToast } = useToast();
   const [subscription, setSubscription] = useState(null);
   const [cardName, setCardName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
@@ -19,6 +22,7 @@ function Subscription() {
   const [cvc, setCvc] = useState("");
   const [simulateDecline, setSimulateDecline] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,9 +47,17 @@ function Subscription() {
     event.preventDefault();
     setError("");
     setSuccess("");
+    if (submitting) return;
 
-    if (!simulateDecline && (!cardName.trim() || !cardNumber.trim() || !expiry.trim() || !cvc.trim())) {
-      setError("Please fill in the card details, or tick the box to demo a declined card.");
+    const nextErrors = {};
+    if (!simulateDecline) {
+      if (!cardName.trim()) nextErrors.cardName = "Please enter the name on the card.";
+      if (!cardNumber.trim()) nextErrors.cardNumber = "Please enter a card number.";
+      if (!expiry.trim()) nextErrors.expiry = "Please enter an expiry date.";
+      if (!cvc.trim()) nextErrors.cvc = "Please enter the CVC.";
+    }
+    setFieldErrors(nextErrors);
+    if (nextErrors.cardName || nextErrors.cardNumber || nextErrors.expiry || nextErrors.cvc) {
       return;
     }
 
@@ -70,6 +82,7 @@ function Subscription() {
     await refreshUser();
     setSubscription(result.data.subscription || null);
     setSuccess(result.data.message || "You are now premium.");
+    showToast(result.data.message || "You are now premium.");
     setCardName("");
     setCardNumber("");
     setExpiry("");
@@ -120,9 +133,13 @@ function Subscription() {
               type="text"
               autoComplete="cc-name"
               value={cardName}
-              onChange={(event) => setCardName(event.target.value)}
+              onChange={(event) => {
+                setCardName(event.target.value);
+                setFieldErrors((current) => ({ ...current, cardName: "" }));
+              }}
               placeholder="Ada Lovelace"
             />
+            {fieldErrors.cardName ? <span className="field-error">{fieldErrors.cardName}</span> : null}
           </label>
           <label className="form-field">
             Card number
@@ -131,9 +148,13 @@ function Subscription() {
               inputMode="numeric"
               autoComplete="cc-number"
               value={cardNumber}
-              onChange={(event) => setCardNumber(event.target.value)}
+              onChange={(event) => {
+                setCardNumber(event.target.value);
+                setFieldErrors((current) => ({ ...current, cardNumber: "" }));
+              }}
               placeholder="4242 4242 4242 4242"
             />
+            {fieldErrors.cardNumber ? <span className="field-error">{fieldErrors.cardNumber}</span> : null}
           </label>
           <div className="form-grid">
             <label className="form-field">
@@ -142,9 +163,13 @@ function Subscription() {
                 type="text"
                 autoComplete="cc-exp"
                 value={expiry}
-                onChange={(event) => setExpiry(event.target.value)}
+                onChange={(event) => {
+                  setExpiry(event.target.value);
+                  setFieldErrors((current) => ({ ...current, expiry: "" }));
+                }}
                 placeholder="12/28"
               />
+              {fieldErrors.expiry ? <span className="field-error">{fieldErrors.expiry}</span> : null}
             </label>
             <label className="form-field">
               CVC
@@ -153,9 +178,13 @@ function Subscription() {
                 inputMode="numeric"
                 autoComplete="cc-csc"
                 value={cvc}
-                onChange={(event) => setCvc(event.target.value)}
+                onChange={(event) => {
+                  setCvc(event.target.value);
+                  setFieldErrors((current) => ({ ...current, cvc: "" }));
+                }}
                 placeholder="123"
               />
+              {fieldErrors.cvc ? <span className="field-error">{fieldErrors.cvc}</span> : null}
             </label>
           </div>
 
@@ -175,6 +204,7 @@ function Subscription() {
           ) : null}
 
           <button className="btn" type="submit" disabled={submitting}>
+            {submitting ? <ButtonSpinner /> : null}
             {submitting ? "Processing..." : "Upgrade to Premium"}
           </button>
         </form>

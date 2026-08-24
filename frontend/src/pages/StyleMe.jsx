@@ -6,11 +6,14 @@ import { useAuth } from "../AuthContext.jsx";
 import { apiRequest } from "../api.js";
 import OutfitResultCard from "../components/OutfitResultCard.jsx";
 import WeatherBanner from "../components/WeatherBanner.jsx";
+import { ButtonSpinner } from "../components/StatusPanel.jsx";
+import { useToast } from "../ToastContext.jsx";
 
 const MAX_PROMPT = 300;
 
 function StyleMe() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [outfit, setOutfit] = useState(null);
   const [error, setError] = useState("");
@@ -41,6 +44,7 @@ function StyleMe() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (loading) return;
     setError("");
     setOutfit(null);
     setSaved(false);
@@ -76,7 +80,7 @@ function StyleMe() {
   }
 
   async function handleSave() {
-    if (!outfit) return;
+    if (!outfit || saving) return;
     setSaving(true);
     setError("");
 
@@ -97,6 +101,7 @@ function StyleMe() {
     }
 
     setSaved(true);
+    showToast("Look saved to your history.");
   }
 
   return (
@@ -139,14 +144,21 @@ function StyleMe() {
                   rows="4"
                   maxLength={MAX_PROMPT}
                   value={prompt}
-                  onChange={(event) => setPrompt(event.target.value.slice(0, MAX_PROMPT))}
+                  onChange={(event) => {
+                    setPrompt(event.target.value.slice(0, MAX_PROMPT));
+                    setError("");
+                  }}
                   placeholder="e.g. Dinner date on a rainy night, smart but not too formal"
                 />
+                {error && !showUpgrade && !outfit ? (
+                  <span className="field-error">{error}</span>
+                ) : null}
                 <span className="char-counter">
                   {prompt.length}/{MAX_PROMPT}
                 </span>
               </label>
               <button className="btn" type="submit" disabled={loading}>
+                {loading ? <ButtonSpinner /> : null}
                 {loading ? "Styling..." : "Style me"}
               </button>
             </form>
@@ -165,7 +177,7 @@ function StyleMe() {
             </div>
           ) : null}
 
-          {error && !showUpgrade ? (
+          {error && !showUpgrade && outfit ? (
             <p className="form-error" role="alert">
               {error}
             </p>

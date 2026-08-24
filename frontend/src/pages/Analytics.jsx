@@ -16,6 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import { apiRequest } from "../api.js";
+import { EmptyState, LoadingState } from "../components/StatusPanel.jsx";
 
 const COLOUR_HEX = {
   Black: "#1a1a1a",
@@ -95,15 +96,35 @@ function Analytics() {
         </div>
       </header>
 
-      {loading ? <p>Loading analytics...</p> : null}
+      {loading ? <LoadingState message="Loading analytics..." /> : null}
       {error ? (
         <p className="form-error" role="alert">
           {error}
         </p>
       ) : null}
 
-      {!loading && items.length < 3 ? (
-        <div className="placeholder-note">Add more items to see your wardrobe analytics</div>
+      {!loading && items.length === 0 ? (
+        <EmptyState
+          title="Nothing to chart yet"
+          message="Upload a few pieces first and your category, colour, and wear charts will appear here."
+          action={
+            <Link className="btn" to="/wardrobe">
+              Go to Wardrobe
+            </Link>
+          }
+        />
+      ) : null}
+
+      {!loading && items.length > 0 && items.length < 3 ? (
+        <EmptyState
+          title="Add a few more pieces"
+          message="Analytics unlocks once you have at least 3 items in your wardrobe."
+          action={
+            <Link className="btn" to="/wardrobe">
+              Add items
+            </Link>
+          }
+        />
       ) : null}
 
       {!loading && items.length >= 3 ? (

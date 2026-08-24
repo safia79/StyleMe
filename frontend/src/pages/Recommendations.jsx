@@ -7,11 +7,14 @@ import { useAuth } from "../AuthContext.jsx";
 import { apiRequest } from "../api.js";
 import WeatherBanner from "../components/WeatherBanner.jsx";
 import OutfitResultCard from "../components/OutfitResultCard.jsx";
+import { EmptyState, LoadingState } from "../components/StatusPanel.jsx";
+import { useToast } from "../ToastContext.jsx";
 
 const OCCASIONS = ["Casual", "Work", "Formal", "Date Night"];
 
 function Recommendations() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [temperature, setTemperature] = useState(null);
   const [occasion, setOccasion] = useState("");
   const [outfits, setOutfits] = useState([]);
@@ -30,6 +33,7 @@ function Recommendations() {
 
   async function handleGenerate(event) {
     event.preventDefault();
+    if (loading) return;
     setError("");
     setOutfits([]);
     setLoading(true);
@@ -54,7 +58,9 @@ function Recommendations() {
 
   async function handleSave(outfit) {
     const key = outfitKey(outfit);
+    if (savingId) return;
     setSavingId(key);
+    setError("");
 
     const result = await apiRequest("/api/outfits", {
       method: "POST",
@@ -73,6 +79,7 @@ function Recommendations() {
     }
 
     setSavedKeys((current) => [...current, key]);
+    showToast("Outfit saved to your history.");
   }
 
   return (
@@ -103,6 +110,7 @@ function Recommendations() {
             </select>
           </label>
           <button className="btn" type="submit" disabled={loading}>
+            {loading ? <span className="btn-spinner" aria-hidden="true" /> : null}
             {loading ? "Generating..." : "Generate Outfit"}
           </button>
         </form>
@@ -112,6 +120,15 @@ function Recommendations() {
         <p className="form-error" role="alert">
           {error} {error.includes("wardrobe") ? <Link to="/wardrobe">Go to Wardrobe</Link> : null}
         </p>
+      ) : null}
+
+      {loading ? <LoadingState message="Finding outfits from your wardrobe..." /> : null}
+
+      {!loading && outfits.length === 0 && !error ? (
+        <EmptyState
+          title="No outfits to show yet"
+          message="Choose an occasion if you like, then generate a look from the clothes you already own."
+        />
       ) : null}
 
       <div className="outfit-list">

@@ -26,6 +26,7 @@ function OutfitResultCard({ outfit, onSave, saved, saving }) {
         </ul>
       ) : null}
       <button className="btn" type="button" onClick={onSave} disabled={saved || saving}>
+        {saving ? <span className="btn-spinner" aria-hidden="true" /> : null}
         {saved ? "Saved" : saving ? "Saving..." : "Save Outfit"}
       </button>
     </article>

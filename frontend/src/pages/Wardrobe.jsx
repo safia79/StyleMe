@@ -6,8 +6,12 @@ import { apiRequest, imageSrc } from "../api.js";
 import { CATEGORIES, COLOURS, SEASONS } from "../tagOptions.js";
 import AddItemPanel from "../components/AddItemPanel.jsx";
 import ItemDetailModal from "../components/ItemDetailModal.jsx";
+import { EmptyState, LoadingState } from "../components/StatusPanel.jsx";
+import UiIcon from "../components/UiIcons.jsx";
+import { useToast } from "../ToastContext.jsx";
 
 function Wardrobe() {
+  const { showToast } = useToast();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -17,6 +21,7 @@ function Wardrobe() {
   const [season, setSeason] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [favouritingId, setFavouritingId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,19 +60,47 @@ function Wardrobe() {
     });
   }, [items, search, category, colour, season]);
 
+  function applyItem(updated) {
+    setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setSelected((current) => (current && current.id === updated.id ? updated : current));
+  }
+
   function handleSaved(item) {
     setItems((current) => [item, ...current]);
     setShowAdd(false);
+    showToast("Item saved to your wardrobe.");
   }
 
-  function handleUpdated(updated) {
-    setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-    setSelected(updated);
+  function handleUpdated(updated, message) {
+    applyItem(updated);
+    if (message) showToast(message);
   }
 
   function handleDeleted(id) {
     setItems((current) => current.filter((item) => item.id !== id));
     setSelected(null);
+    showToast("Item deleted from your wardrobe.");
+  }
+
+  async function handleFavouriteClick(item) {
+    if (favouritingId) return;
+
+    const previous = item.isFavourite;
+    const optimistic = { ...item, isFavourite: !previous };
+    applyItem(optimistic);
+    setFavouritingId(item.id);
+
+    const result = await apiRequest(`/api/wardrobe/${item.id}/favourite`, { method: "POST" });
+    setFavouritingId(null);
+
+    if (!result.ok) {
+      applyItem(item);
+      setError(result.data.error || "Could not update favourite.");
+      return;
+    }
+
+    applyItem(result.data.item);
+    showToast(result.data.item.isFavourite ? "Added to favourites." : "Removed from favourites.");
   }
 
   return (
@@ -117,7 +150,7 @@ function Wardrobe() {
         </select>
       </div>
 
-      {loading ? <p>Loading your wardrobe...</p> : null}
+      {loading ? <LoadingState message="Loading your wardrobe..." /> : null}
       {error ? (
         <p className="form-error" role="alert">
           {error}
@@ -125,28 +158,56 @@ function Wardrobe() {
       ) : null}
 
       {!loading && items.length === 0 ? (
-        <div className="placeholder-note">No items yet. Click Add Item to upload your first piece.</div>
+        <EmptyState
+          title="Your wardrobe is empty"
+          message="Upload your first piece to start building looks."
+          action={
+            <button className="btn" type="button" onClick={() => setShowAdd(true)}>
+              Add Item
+            </button>
+          }
+        />
       ) : null}
 
       {!loading && items.length > 0 && visibleItems.length === 0 ? (
-        <div className="placeholder-note">No items match your search. Try clearing the filters.</div>
+        <EmptyState
+          title="No matching items"
+          message="Nothing matches your search. Try clearing the filters."
+        />
       ) : null}
 
       {visibleItems.length > 0 ? (
         <div className="item-grid">
           {visibleItems.map((item) => (
-            <button key={item.id} type="button" className="item-card" onClick={() => setSelected(item)}>
-              <img src={imageSrc(item.imageUrl)} alt={`${item.colour} ${item.category}`} />
-              <div className="item-card-body">
-                <strong>
-                  {item.colour} {item.category}
-                  {item.isFavourite ? " ★" : ""}
-                </strong>
-                <span>
-                  {item.style} · {item.season}
+            <article key={item.id} className="item-card">
+              <button type="button" className="item-card-hit" onClick={() => setSelected(item)}>
+                <span className="item-card-media">
+                  <img src={imageSrc(item.imageUrl)} alt={`${item.colour} ${item.category}`} />
                 </span>
-              </div>
-            </button>
+                <span className="item-card-body">
+                  <strong>
+                    {item.colour} {item.category}
+                  </strong>
+                  <span>
+                    {item.style} · {item.season}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`fav-toggle ${item.isFavourite ? "is-on" : ""}`}
+                aria-pressed={item.isFavourite}
+                aria-label={item.isFavourite ? "Remove favourite" : "Add to favourites"}
+                disabled={favouritingId === item.id}
+                onClick={() => handleFavouriteClick(item)}
+              >
+                {favouritingId === item.id ? (
+                  <span className="btn-spinner fav-spinner" />
+                ) : (
+                  <UiIcon name={item.isFavourite ? "heartFilled" : "heart"} size={16} />
+                )}
+              </button>
+            </article>
           ))}
         </div>
       ) : null}

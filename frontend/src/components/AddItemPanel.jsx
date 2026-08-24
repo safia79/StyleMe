@@ -88,6 +88,7 @@ function AddItemPanel({ onClose, onSaved }) {
 
   async function handleSave(event) {
     event.preventDefault();
+    if (saving) return;
     setSaving(true);
     setError("");
 
@@ -107,11 +108,17 @@ function AddItemPanel({ onClose, onSaved }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div
+      className="modal-backdrop"
+      onClick={() => {
+        if (step === "uploading" || step === "analysing" || saving) return;
+        onClose();
+      }}
+    >
       <div className="modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="add-item-title">
         <div className="modal-header">
           <h2 id="add-item-title">Add Item</h2>
-          <button type="button" className="btn-ghost" onClick={onClose}>
+          <button type="button" className="btn-ghost" onClick={onClose} disabled={step === "uploading" || step === "analysing" || saving}>
             Close
           </button>
         </div>
@@ -187,6 +194,7 @@ function AddItemPanel({ onClose, onSaved }) {
             ) : null}
 
             <button className="btn" type="submit" disabled={saving}>
+              {saving ? <span className="btn-spinner" aria-hidden="true" /> : null}
               {saving ? "Saving..." : "Save to wardrobe"}
             </button>
           </form>

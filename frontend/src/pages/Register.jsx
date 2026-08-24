@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
 import AuthShell, { AuthHighlights } from "../components/AuthShell.jsx";
 import UiIcon from "../components/UiIcons.jsx";
+import { ButtonSpinner } from "../components/StatusPanel.jsx";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -73,6 +74,7 @@ function Register() {
       return;
     }
 
+    if (submitting) return;
     setSubmitting(true);
     const result = await register({
       name: values.name,
@@ -172,6 +174,7 @@ function Register() {
           ) : null}
 
           <button className="btn" type="submit" disabled={submitting}>
+            {submitting ? <ButtonSpinner /> : null}
             {submitting ? "Creating account..." : "Create account"}
           </button>
         </form>

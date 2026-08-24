@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest, imageSrc } from "../api.js";
+import { ButtonSpinner, EmptyState, LoadingState } from "../components/StatusPanel.jsx";
+import { useToast } from "../ToastContext.jsx";
 
 const SLOTS = [
   { key: "top", label: "Top", categories: ["Top", "Dress"] },
@@ -16,6 +18,7 @@ const SLOTS = [
 const OCCASIONS = ["Casual", "Work", "Formal", "Date Night", "Weekend"];
 
 function OutfitBuilder() {
+  const { showToast } = useToast();
   const [items, setItems] = useState([]);
   const [slots, setSlots] = useState({});
   const [name, setName] = useState("");
@@ -24,6 +27,7 @@ function OutfitBuilder() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
@@ -79,19 +83,17 @@ function OutfitBuilder() {
 
   async function handleSave(event) {
     event.preventDefault();
+    if (saving) return;
     setError("");
     setSuccess("");
 
-    if (!name.trim()) {
-      setError("Please give this outfit a name.");
-      return;
-    }
-    if (!occasionTag) {
-      setError("Please choose an occasion tag.");
-      return;
-    }
-    if (filledCount < 2) {
-      setError("Please add at least 2 items to save an outfit.");
+    const nextErrors = {};
+    if (!name.trim()) nextErrors.name = "Please give this outfit a name.";
+    if (!occasionTag) nextErrors.occasionTag = "Please choose an occasion tag.";
+    if (filledCount < 2) nextErrors.slots = "Please add at least 2 items to save an outfit.";
+    setFieldErrors(nextErrors);
+    if (nextErrors.name || nextErrors.occasionTag || nextErrors.slots) {
+      setError(nextErrors.slots || nextErrors.name || nextErrors.occasionTag);
       return;
     }
 
@@ -114,9 +116,11 @@ function OutfitBuilder() {
     }
 
     setSuccess("Outfit saved.");
+    showToast("Outfit saved to your history.");
     setName("");
     setOccasionTag("Casual");
     setSlots({});
+    setFieldErrors({});
   }
 
   return (
@@ -129,7 +133,19 @@ function OutfitBuilder() {
         </div>
       </header>
 
-      {loading ? <p>Loading your wardrobe...</p> : null}
+      {loading ? <LoadingState message="Loading your wardrobe..." /> : null}
+
+      {!loading && items.length === 0 ? (
+        <EmptyState
+          title="Add clothes first"
+          message="Outfit Builder needs pieces in your wardrobe before you can fill the slots."
+          action={
+            <Link className="btn" to="/wardrobe">
+              Go to Wardrobe
+            </Link>
+          }
+        />
+      ) : null}
 
       {success ? (
         <p className="toast-banner" role="status">
@@ -137,6 +153,8 @@ function OutfitBuilder() {
         </p>
       ) : null}
 
+      {!loading && items.length > 0 ? (
+        <>
       <form className="form builder-form" onSubmit={handleSave}>
         <div className="form-grid">
           <label className="form-field">
@@ -148,19 +166,30 @@ function OutfitBuilder() {
                 setName(event.target.value);
                 setSuccess("");
                 setError("");
+                setFieldErrors((current) => ({ ...current, name: "" }));
               }}
               placeholder="Weekend brunch"
             />
+            {fieldErrors.name ? <span className="field-error">{fieldErrors.name}</span> : null}
           </label>
           <label className="form-field">
             Occasion tag
-            <select value={occasionTag} onChange={(event) => setOccasionTag(event.target.value)}>
+            <select
+              value={occasionTag}
+              onChange={(event) => {
+                setOccasionTag(event.target.value);
+                setFieldErrors((current) => ({ ...current, occasionTag: "" }));
+              }}
+            >
               {OCCASIONS.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
               ))}
             </select>
+            {fieldErrors.occasionTag ? (
+              <span className="field-error">{fieldErrors.occasionTag}</span>
+            ) : null}
           </label>
         </div>
 
@@ -201,7 +230,8 @@ function OutfitBuilder() {
           </p>
         ) : null}
 
-        <button className="btn" type="submit" disabled={saving || loading}>
+        <button className="btn" type="submit" disabled={saving || loading || items.length === 0}>
+          {saving ? <ButtonSpinner /> : null}
           {saving ? "Saving..." : "Save outfit"}
         </button>
       </form>
@@ -245,6 +275,8 @@ function OutfitBuilder() {
             )}
           </div>
         </div>
+      ) : null}
+      </>
       ) : null}
     </main>
   );

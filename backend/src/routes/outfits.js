@@ -113,9 +113,12 @@ router.patch("/:id", async (req, res) => {
       return res.status(400).json({ error: "Please enter an outfit name." });
     }
 
-    const outfit = await prisma.savedOutfit.update({
-      where: { id: existing.id },
+    await prisma.savedOutfit.updateMany({
+      where: { id: existing.id, userId: req.session.userId },
       data: { name },
+    });
+    const outfit = await prisma.savedOutfit.findFirst({
+      where: { id: existing.id, userId: req.session.userId },
     });
     const [withItems] = await attachItems([outfit], req.session.userId);
     return res.json({ outfit: withItems });
@@ -136,8 +139,8 @@ router.post("/:id/wear", async (req, res) => {
       : [];
 
     const updates = [
-      prisma.savedOutfit.update({
-        where: { id: existing.id },
+      prisma.savedOutfit.updateMany({
+        where: { id: existing.id, userId: req.session.userId },
         data: { wornCount: { increment: 1 } },
       }),
     ];
@@ -151,7 +154,9 @@ router.post("/:id/wear", async (req, res) => {
     }
     await prisma.$transaction(updates);
 
-    const updated = await prisma.savedOutfit.findUnique({ where: { id: existing.id } });
+    const updated = await prisma.savedOutfit.findFirst({
+      where: { id: existing.id, userId: req.session.userId },
+    });
     const [withItems] = await attachItems([updated], req.session.userId);
     return res.json({ outfit: withItems });
   } catch (err) {
@@ -166,7 +171,9 @@ router.delete("/:id", async (req, res) => {
     const existing = await findOwnedOutfit(req, res);
     if (!existing) return;
 
-    await prisma.savedOutfit.delete({ where: { id: existing.id } });
+    await prisma.savedOutfit.deleteMany({
+      where: { id: existing.id, userId: req.session.userId },
+    });
     return res.json({ message: "Outfit deleted" });
   } catch (err) {
     console.error("Delete outfit error:", err);

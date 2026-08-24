@@ -3,6 +3,7 @@
 
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
+import { LoadingState } from "./StatusPanel.jsx";
 
 function ProtectedRoute() {
   const { user, loading } = useAuth();
@@ -10,7 +11,7 @@ function ProtectedRoute() {
   if (loading) {
     return (
       <main className="page">
-        <p>Loading...</p>
+        <LoadingState message="Loading..." />
       </main>
     );
   }

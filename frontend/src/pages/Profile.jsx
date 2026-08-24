@@ -3,15 +3,19 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext.jsx";
 import { apiRequest } from "../api.js";
+import { ButtonSpinner, LoadingState } from "../components/StatusPanel.jsx";
+import { useToast } from "../ToastContext.jsx";
 
 const STYLE_OPTIONS = ["Casual", "Formal", "Sporty", "Smart-Casual", "Minimalist", "Streetwear"];
 
 function Profile() {
   const { user, refreshUser } = useAuth();
+  const { showToast } = useToast();
   const [name, setName] = useState(user?.name || "");
   const [city, setCity] = useState(user?.city || "");
   const [stylePreferences, setStylePreferences] = useState([]);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -57,15 +61,12 @@ function Profile() {
     event.preventDefault();
     setError("");
     setSuccess("");
-
-    if (!name.trim()) {
-      setError("Please enter your name.");
-      return;
-    }
-    if (!city.trim()) {
-      setError("Please enter your city.");
-      return;
-    }
+    if (saving) return;
+    const nextErrors = {};
+    if (!name.trim()) nextErrors.name = "Please enter your name.";
+    if (!city.trim()) nextErrors.city = "Please enter your city.";
+    setFieldErrors(nextErrors);
+    if (nextErrors.name || nextErrors.city) return;
 
     setSaving(true);
     const result = await apiRequest("/api/profile", {
@@ -85,6 +86,7 @@ function Profile() {
 
     await refreshUser();
     setSuccess(result.data.message || "Profile saved.");
+    showToast(result.data.message || "Profile saved.");
   }
 
   if (loading) {
@@ -92,7 +94,7 @@ function Profile() {
       <main className="page page-wide">
         <p className="page-kicker">Account</p>
         <h1>Profile</h1>
-        <p>Loading your settings...</p>
+        <LoadingState message="Loading your settings..." />
       </main>
     );
   }
@@ -126,8 +128,10 @@ function Profile() {
               setName(event.target.value);
               setSuccess("");
               setError("");
+              setFieldErrors((current) => ({ ...current, name: "" }));
             }}
           />
+          {fieldErrors.name ? <span className="field-error">{fieldErrors.name}</span> : null}
         </label>
 
         <label className="form-field">
@@ -145,8 +149,10 @@ function Profile() {
               setCity(event.target.value);
               setSuccess("");
               setError("");
+              setFieldErrors((current) => ({ ...current, city: "" }));
             }}
           />
+          {fieldErrors.city ? <span className="field-error">{fieldErrors.city}</span> : null}
         </label>
 
         <fieldset className="pref-fieldset">
@@ -177,6 +183,7 @@ function Profile() {
         ) : null}
 
         <button className="btn" type="submit" disabled={saving}>
+          {saving ? <ButtonSpinner /> : null}
           {saving ? "Saving..." : "Save changes"}
         </button>
       </form>
