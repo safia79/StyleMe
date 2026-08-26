@@ -1873,3 +1873,72 @@ a.btn:hover {
 .auth-card .forgot-link {
   color: var(--terracotta);
 }
+
+/* FR-08 change: pricing cards, monthly/annual toggle, and Stripe CardElement checkout */
+:root {
+  --sm-bg: #f2efea;
+  --sm-surface: #ffffff;
+  --sm-dark: #27201a;
+  --sm-soft: #ece2d9;
+  --sm-accent: #7b4a34;
+  --sm-accent-dark: #5e3826;
+  --sm-border: #e7e1d8;
+  --sm-text: #2a2118;
+  --sm-text-muted: #7a6f63;
+}
+
+.subscription-page .pricing-card { padding: 2rem; }
+
+.billing-toggle {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0.75rem; margin-bottom: 2rem; font-size: 0.95rem; color: var(--sm-text-muted);
+}
+.billing-toggle .is-active { color: var(--sm-text); font-weight: 600; }
+.billing-toggle em { font-style: normal; color: var(--sm-accent); }
+
+.toggle-switch {
+  position: relative; width: 44px; height: 24px; border-radius: 999px;
+  border: none; background: var(--sm-soft); cursor: pointer; padding: 0;
+  transition: background 0.2s ease;
+}
+.toggle-switch.is-on { background: var(--sm-accent); }
+.toggle-knob {
+  position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--sm-surface); transition: transform 0.2s ease;
+}
+.toggle-switch.is-on .toggle-knob { transform: translateX(20px); }
+
+.pricing-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
+@media (max-width: 720px) { .pricing-grid { grid-template-columns: 1fr; } }
+
+.plan-card {
+  position: relative; border: 1px solid var(--sm-border); border-radius: 16px;
+  padding: 1.75rem; background: var(--sm-surface); display: flex;
+  flex-direction: column; gap: 1rem;
+}
+.plan-card h3 { margin: 0; color: var(--sm-text); }
+.plan-card-premium {
+  border-color: var(--sm-accent);
+  background: linear-gradient(180deg, var(--sm-soft) 0%, var(--sm-surface) 45%);
+}
+.plan-badge {
+  position: absolute; top: -12px; right: 1.5rem; background: var(--sm-accent);
+  color: #fff; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; padding: 0.3rem 0.75rem; border-radius: 999px;
+}
+.plan-price { font-size: 2rem; font-weight: 700; color: var(--sm-text); margin: 0; }
+.plan-price span { font-size: 0.95rem; font-weight: 400; color: var(--sm-text-muted); }
+.plan-features { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; flex: 1; }
+.plan-features li { display: flex; align-items: center; gap: 0.6rem; color: var(--sm-text); font-size: 0.95rem; }
+.plan-feature-disabled { color: var(--sm-text-muted); text-decoration: line-through; }
+.plan-feature-icon {
+  display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--sm-soft); color: var(--sm-accent); font-size: 0.75rem; flex-shrink: 0;
+}
+.plan-feature-disabled .plan-feature-icon { background: transparent; color: var(--sm-text-muted); }
+.plan-secure-note { margin: 0; font-size: 0.8rem; color: var(--sm-text-muted); text-align: center; }
+.btn-ghost { background: transparent; border: 1px solid var(--sm-border); color: var(--sm-text); }
+.btn-ghost:disabled { opacity: 0.6; cursor: default; }
+.checkout-panel { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--sm-border); }
+.stripe-card-element { border: 1px solid var(--sm-border); border-radius: 10px; padding: 0.85rem 1rem; background: var(--sm-surface); }
+.checkout-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem; }
