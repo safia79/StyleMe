@@ -1,82 +1,132 @@
 // FR-08: Premium Subscription
+// NFR-02: card numbers, CVCs and expiry dates are collected by Stripe's
+// hosted iframe (Stripe Elements) in the browser and never sent here.
+// This file only ever sees a PaymentIntent id, which Stripe itself has
+// already validated — that's the "success token" the proposal describes.
 
 const express = require("express");
+const Stripe = require("stripe");
 const prisma = require("../db");
 const requireAuth = require("../middleware/requireAuth");
-const { mockCharge } = require("../mockPayment");
+
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const router = express.Router();
-router.use(requireAuth);
 
-const publicUserSelect = {
-  id: true,
-  name: true,
-  email: true,
-  city: true,
-  accountType: true,
-  createdAt: true,
+// $9.99/month or $95.88/year (20% off), amounts in cents for Stripe
+const PRICES = {
+  monthly: { amount: 999 },
+  annual: { amount: 9588 },
 };
+const CURRENCY = "aud";
 
-router.get("/status", async (req, res) => {
+function addBillingPeriod(date, billingCycle) {
+  const result = new Date(date);
+  if (billingCycle === "annual") {
+    result.setFullYear(result.getFullYear() + 1);
+  } else {
+    result.setMonth(result.getMonth() + 1);
+  }
+  return result;
+}
+
+async function getSubscriptionForUser(userId) {
+  return prisma.subscription.findFirst({
+    where: { userId },
+    orderBy: { expiryDate: "desc" },
+  });
+}
+
+async function setUserPremium(userId) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { accountType: "premium" },
+  });
+}
+
+async function upsertSubscription(userId, { customerRef, expiryDate, planStatus }) {
+  const existing = await prisma.subscription.findFirst({
+    where: { userId },
+    orderBy: { expiryDate: "desc" },
+  });
+
+  if (existing) {
+    return prisma.subscription.update({
+      where: { id: existing.id },
+      data: { customerRef, expiryDate, planStatus },
+    });
+  }
+
+  return prisma.subscription.create({
+    data: { userId, customerRef, expiryDate, planStatus },
+  });
+}
+
+// GET /api/subscription/status
+router.get("/status", requireAuth, async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.session.userId },
-      select: publicUserSelect,
-    });
-    const subscription = await prisma.subscription.findFirst({
-      where: { userId: req.session.userId },
-      orderBy: { expiryDate: "desc" },
-    });
-    return res.json({ user, subscription });
+    const subscription = await getSubscriptionForUser(req.session.userId);
+    res.json({ subscription: subscription || null });
   } catch (err) {
-    console.error("Subscription status error:", err);
-    return res.status(500).json({ error: "Could not load subscription status." });
+    console.error("subscription/status error:", err.message);
+    res.status(500).json({ error: "Could not load subscription status." });
   }
 });
 
-router.post("/checkout", async (req, res) => {
-  try {
-    const cardNumber = typeof req.body.cardNumber === "string" ? req.body.cardNumber : "";
-    const simulateDecline = Boolean(req.body.simulateDecline);
+// POST /api/subscription/create-payment-intent
+router.post("/create-payment-intent", requireAuth, async (req, res) => {
+  const { billingCycle } = req.body;
+  const price = PRICES[billingCycle] || PRICES.monthly;
 
-    // MOCK PAYMENT — replace with real Stripe/payment integration later
-    const charge = mockCharge({ cardNumber, simulateDecline });
-    if (!charge.ok) {
-      return res.status(402).json({ error: charge.error });
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: price.amount,
+      currency: CURRENCY,
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        userId: String(req.session.userId),
+        billingCycle: billingCycle === "annual" ? "annual" : "monthly",
+      },
+    });
+
+    res.json({ clientSecret: paymentIntent.client_secret });
+  } catch (err) {
+    console.error("Stripe create-payment-intent error:", err.message);
+    res.status(500).json({ error: "Could not start checkout. Please try again." });
+  }
+});
+
+// POST /api/subscription/confirm
+router.post("/confirm", requireAuth, async (req, res) => {
+  const { paymentIntentId } = req.body;
+  if (!paymentIntentId) {
+    return res.status(400).json({ error: "Missing paymentIntentId." });
+  }
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (paymentIntent.metadata.userId !== String(req.session.userId)) {
+      return res.status(403).json({ error: "This payment does not belong to your account." });
+    }
+    if (paymentIntent.status !== "succeeded") {
+      return res.status(402).json({ error: "Your card was declined." });
     }
 
-    const expiryDate = new Date();
-    expiryDate.setMonth(expiryDate.getMonth() + 1);
+    const billingCycle = paymentIntent.metadata.billingCycle || "monthly";
+    const expiryDate = addBillingPeriod(new Date(), billingCycle);
 
-    const [user] = await prisma.$transaction([
-      prisma.user.update({
-        where: { id: req.session.userId },
-        data: { accountType: "premium" },
-        select: publicUserSelect,
-      }),
-      prisma.subscription.create({
-        data: {
-          userId: req.session.userId,
-          customerRef: charge.customerRef,
-          expiryDate,
-          planStatus: "active",
-        },
-      }),
-    ]);
-
-    const subscription = await prisma.subscription.findFirst({
-      where: { userId: req.session.userId },
-      orderBy: { expiryDate: "desc" },
+    await setUserPremium(req.session.userId);
+    const subscription = await upsertSubscription(req.session.userId, {
+      customerRef: paymentIntent.id,
+      expiryDate,
+      planStatus: "active",
     });
 
-    return res.json({
-      user,
-      subscription,
-      message: "Upgrade successful. Premium features are unlocked.",
-    });
+    res.json({ message: "You are now premium.", subscription });
   } catch (err) {
-    console.error("Checkout error:", err);
-    return res.status(500).json({ error: "Could not complete checkout. Please try again." });
+    console.error("Stripe confirm error:", err.message);
+    res.status(500).json({ error: "We couldn't confirm your payment. Please contact support." });
   }
 });
 
