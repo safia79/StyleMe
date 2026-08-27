@@ -18,13 +18,13 @@ enum AccountType {
 }
 
 model User {
-  id           Int         @id @default(autoincrement())
+  id           Int          @id @default(autoincrement())
   name         String
-  email        String      @unique
+  email        String       @unique
   passwordHash String
   city         String
-  accountType  AccountType @default(free)
-  createdAt    DateTime    @default(now())
+  accountType  AccountType  @default(free)
+  createdAt    DateTime     @default(now())
 
   wardrobeItems  WardrobeItem[]
   savedOutfits   SavedOutfit[]
@@ -57,7 +57,7 @@ model SavedOutfit {
   userId      Int
   name        String
   occasionTag String
-  itemIds     Json // JSON array of wardrobe_item ids, e.g. [1, 4, 7]
+  itemIds     Json     // JSON array of wardrobe_item ids, e.g. [1, 4, 7]
   createdAt   DateTime @default(now())
   wornCount   Int      @default(0)
 
@@ -76,6 +76,7 @@ model Subscription {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
+}
 }
 
 model Notification {

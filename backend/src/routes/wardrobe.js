@@ -7,8 +7,7 @@ const multer = require("multer");
 const prisma = require("../db");
 const requireAuth = require("../middleware/requireAuth");
 const { isValidTags } = require("../tagOptions");
-const { mockAnalyseClothingImage } = require("../mockAi");
-const { createNotificationOnce, MESSAGES } = require("../notifications");
+const { analyseClothingImage } = require("../visionTag");
 
 const router = express.Router();
 router.use(requireAuth);
@@ -50,6 +49,23 @@ function runUpload(req, res) {
   });
 }
 
+function mimeFromName(filename) {
+  const ext = path.extname(filename).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".webp") return "image/webp";
+  return "image/jpeg";
+}
+
+// Only allow tagging files this user already uploaded under /uploads.
+function resolveOwnedUploadPath(imageUrl, userId) {
+  if (typeof imageUrl !== "string" || !imageUrl.startsWith("/uploads/")) return null;
+  const filename = path.basename(imageUrl);
+  if (!filename.startsWith(`${userId}-`)) return null;
+  const filePath = path.join(uploadsDir, filename);
+  if (!fs.existsSync(filePath)) return null;
+  return { path: filePath, mimetype: mimeFromName(filename) };
+}
+
 function deleteUploadFile(imageUrl, userId) {
   if (!imageUrl || !imageUrl.startsWith("/uploads/")) return;
   const filename = path.basename(imageUrl);
@@ -87,7 +103,7 @@ function outfitContainsItem(itemIds, itemId) {
   return itemIds.some((value) => Number(value) === itemId);
 }
 
-// Upload the photo, then run the mock AI and return suggested tags
+// Upload the photo, then auto-tag (Vision API) and return suggested tags
 router.post("/upload", async (req, res) => {
   try {
     await runUpload(req, res);
@@ -98,8 +114,8 @@ router.post("/upload", async (req, res) => {
 
     const imageUrl = `/uploads/${req.file.filename}`;
 
-    // MOCK AI — replace with real image recognition API later
-    const tags = await mockAnalyseClothingImage(req.file);
+    // UC-04 / FR-03: Vision auto-tags so AddItemPanel can pre-fill the dropdowns.
+    const tags = await analyseClothingImage(req.file);
 
     return res.json({ imageUrl, tags });
   } catch (err) {
@@ -111,6 +127,45 @@ router.post("/upload", async (req, res) => {
     }
     console.error("Upload error:", err);
     return res.status(500).json({ error: "Could not upload the image. Please try again." });
+  }
+});
+
+// UC-04 / FR-03: tag an image without saving a wardrobe row.
+// Accepts multipart field "image" or JSON { imageUrl: "/uploads/..." } from a prior upload.
+router.post("/auto-tag", async (req, res) => {
+  try {
+    const isMultipart = String(req.headers["content-type"] || "").includes("multipart/form-data");
+    if (isMultipart) {
+      await runUpload(req, res);
+    }
+
+    let file = req.file || null;
+    let imageUrl = file ? `/uploads/${file.filename}` : null;
+
+    if (!file) {
+      const owned = resolveOwnedUploadPath(req.body?.imageUrl || req.body?.imagePath, req.session.userId);
+      if (!owned) {
+        return res.status(400).json({
+          error: "Please upload a clothing image, or pass imageUrl from a previous upload.",
+        });
+      }
+      file = owned;
+      imageUrl = req.body.imageUrl || req.body.imagePath;
+    }
+
+    const tags = await analyseClothingImage(file);
+    return res.json({ imageUrl, tags });
+  } catch (err) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ error: "Image must be 10MB or smaller." });
+    }
+    if (err.message === "Please upload a JPG, PNG, or WEBP image.") {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error("Auto-tag error:", err);
+    return res.status(503).json({
+      error: "Could not auto-tag this image. Please try again or set tags manually.",
+    });
   }
 });
 

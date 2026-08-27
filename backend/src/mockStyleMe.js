@@ -1,130 +1,170 @@
-// FR-06: Style Me (Generative AI Prompt)
-// MOCK AI — replace with real recommendation/API logic later
+// ==============================================================================
+// CHANGES MADE:
+// 1. Added Prisma client import to directly fetch wardrobe items by userId.
+// 2. Replaced Claude model endpoints with Google Gemini constants.
+// 3. Added parseGeminiJson to strip Markdown code blocks before parsing JSON.
+// 4. Replaced callClaude with callGemini using Google REST API (generateContent).
+// 5. Enforced responseMimeType: "application/json" in Gemini config.
+// 6. Updated processStyleMeRequest to accept ({ userId, prompt }), fetch items from DB,
+//    and map returned item IDs back to full wardrobe item objects.
+// 7. Exported both processStyleMeRequest and mockStyleMeLook for compatibility.
+// ==============================================================================
 
-const {
-  distinctCategories,
-  buildRationale,
-  pickDistinctCategoryItems,
-} = require("./outfitHelpers");
+const prisma = require("./db");
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+// CHANGED: Set Gemini API endpoint parameters instead of Anthropic
+const GEMINI_MODEL = process.env.GEMINI_VISION_MODEL || "gemini-3.5-flash";
 
-const LIGHT_SHOE_COLOURS = ["White", "Beige", "Yellow", "Pink"];
-
-function promptFlags(prompt) {
-  const text = prompt.toLowerCase();
+// Helper: Empty / error payload generator
+function emptyError(message, code) {
   return {
-    rain: /\brain|raining|storm|drizzle|wet\b/.test(text),
-    formal: /\bformal|wedding|gala|black.?tie|interview|office|work\b/.test(text),
-    casual: /\bcasual|weekend|brunch|relax|chill|everyday\b/.test(text),
-    date: /\bdate|dinner|night out\b/.test(text),
-    sport: /\bgym|sport|run|workout|athletic\b/.test(text),
-    hot: /\bhot|summer|beach|heat|sunny\b/.test(text),
-    cold: /\bcold|winter|freeze|snow|chilly\b/.test(text),
+    success: false,
+    error: message,
+    code: code || "UNKNOWN_ERROR",
+    outfitItems: [],
+    rationale: "",
+    stylingTips: [],
   };
 }
 
-function occasionFromFlags(flags) {
-  if (flags.formal) return "Formal";
-  if (flags.date) return "Date Night";
-  if (flags.sport || flags.casual) return "Casual";
-  return "Custom";
+// CHANGED: Added helper to parse Gemini response text and handle standard markdown fences
+function parseGeminiJson(text) {
+  const raw = String(text || "").trim();
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const jsonText = fenced ? fenced[1].trim() : raw;
+  return JSON.parse(jsonText);
 }
 
-function filterByPrompt(items, flags) {
-  return items.filter((item) => {
-    // "rain" avoids suede/light shoes (we have no material field, so light shoe colours stand in)
-    if (flags.rain && item.category === "Shoes" && LIGHT_SHOE_COLOURS.includes(item.colour)) {
-      return false;
-    }
-    if (flags.hot && item.category === "Outerwear") return false;
-    if (flags.hot && item.season === "Winter") return false;
-    if (flags.cold && item.season === "Summer") return false;
-    return true;
-  });
-}
-
-function buildTips(flags, items) {
-  const tips = [];
-
-  if (flags.rain) {
-    tips.push("Skip light or suede-look shoes so they do not get stained in the rain.");
-    tips.push("Bring a jacket you can take off once you are indoors.");
-  }
-  if (flags.formal) {
-    tips.push("Keep accessories simple so the outfit stays polished.");
-  }
-  if (flags.date) {
-    tips.push("One standout colour or accessory is enough for a date look.");
-  }
-  if (flags.hot) {
-    tips.push("Choose breathable pieces and skip heavy outerwear.");
-  }
-  if (flags.cold) {
-    tips.push("Start with a warm layer you can add or remove.");
-  }
-  if (flags.sport) {
-    tips.push("Prioritise shoes you can move in comfortably.");
-  }
-  if (items.some((item) => item.category === "Outerwear") && !flags.hot) {
-    tips.push("Wear the outer layer on the way, then drape it if the room is warm.");
+// CHANGED: Replaced callClaude() with callGemini() using fetch and GEMINI_API_KEY
+async function callGemini(structuredPrompt) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not set in process.env");
   }
 
-  if (tips.length === 0) {
-    tips.push("Stick to two main colours so the look feels pulled together.");
-    tips.push("Check that shoes match the formality of the rest of the outfit.");
-  }
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
-  return tips.slice(0, 3);
-}
-
-// MOCK AI — replace with real recommendation/API logic later
-async function mockStyleMeLook(items, prompt) {
-  await delay(900);
-
-  if (!Array.isArray(items) || items.length < 2) {
-    return {
-      error: "Add at least 2 clothing items to your wardrobe before using StyleMe.",
-    };
-  }
-
-  const flags = promptFlags(prompt);
-  const occasionTag = occasionFromFlags(flags);
-
-  let pool = filterByPrompt(items, flags);
-  if (distinctCategories(pool) < 2) {
-    pool = items;
-  }
-
-  let preferredFormalities = null;
-  let preferredStyles = null;
-  if (flags.formal) preferredFormalities = ["Formal", "Smart-Casual"];
-  else if (flags.date) preferredFormalities = ["Smart-Casual", "Formal"];
-  else if (flags.casual) preferredFormalities = ["Casual"];
-  if (flags.sport) preferredStyles = ["Sporty"];
-
-  const picked =
-    pickDistinctCategoryItems(pool, preferredFormalities, preferredStyles) ||
-    pickDistinctCategoryItems(items, null, null);
-
-  if (!picked) {
-    return { error: "Could not build a look from the current wardrobe. Try adding more variety." };
-  }
-
-  const shortPrompt = prompt.trim().slice(0, 40);
-  const name = shortPrompt ? `StyleMe: ${shortPrompt}` : "StyleMe look";
-
-  return {
-    outfit: {
-      items: picked,
-      rationale: buildRationale(picked, occasionTag === "Custom" ? "styled" : occasionTag.toLowerCase()),
-      tips: buildTips(flags, picked),
-      occasionTag,
-      name,
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [{ text: structuredPrompt }],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      payload.error?.message || `Gemini HTTP ${response.status}`
+    );
+  }
+
+  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error("Gemini returned an empty response.");
+  }
+
+  return parseGeminiJson(text);
+}
+
+// Main handler for Style Me requests
+async function processStyleMeRequest({ userId, prompt } = {}) {
+  // 1. Auth check
+  if (!userId) {
+    return emptyError("Please log in to continue.", "AUTH_REQUIRED");
+  }
+
+  // 2. Fetch user's wardrobe items from database
+  const wardrobeItems = await prisma.wardrobeItem.findMany({
+    where: { userId },
+  });
+
+  if (!wardrobeItems || wardrobeItems.length < 2) {
+    return emptyError(
+      "Please add at least 2 items to your wardrobe so Style Me can create an outfit.",
+      "INSUFFICIENT_WARDROBE"
+    );
+  }
+
+  // 3. User account check (Premium feature validation)
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { accountType: true },
+  });
+
+  if (!user || user.accountType !== "premium") {
+    return emptyError(
+      "Style Me is a Premium feature. Upgrade to unlock personalized AI styling.",
+      "PREMIUM_REQUIRED"
+    );
+  }
+
+  // 4. Construct items context for Gemini prompt
+  const itemsContext = wardrobeItems
+    .map(
+      (item) =>
+        `- ID: ${item.id}, Title: "${item.title || item.category}", Category: ${item.category}, Color: ${item.colour || item.color || "N/A"}`
+    )
+    .join("\n");
+
+  const structuredPrompt = `
+You are a personal fashion stylist assistant.
+Given the following user items from their wardrobe:
+${itemsContext}
+
+User request/occasion: "${prompt || "Create a stylish overall look"}"
+
+Respond ONLY with a valid JSON object matching this exact structure:
+{
+  "outfitItemIds": ["<id1>", "<id2>"],
+  "rationale": "<explanation of why these match>",
+  "stylingTips": ["<tip1>", "<tip2>", "<tip3>"]
+}
+`;
+
+  // 5. Executing callGemini instead of callClaude
+  let aiResponse;
+  try {
+    aiResponse = await callGemini(structuredPrompt);
+  } catch (err) {
+    console.error("Style Me Gemini error:", err);
+    return emptyError(
+      "Style Me is temporarily unavailable. Please try again shortly.",
+      "AI_SERVICE_UNAVAILABLE"
+    );
+  }
+
+  // 6. Map returned IDs back to full database items expected by the frontend UI
+  const wardrobeById = new Map(wardrobeItems.map((item) => [String(item.id), item]));
+  const validatedItems = (aiResponse.outfitItemIds || [])
+    .map((id) => wardrobeById.get(String(id)))
+    .filter(Boolean);
+
+  if (validatedItems.length === 0) {
+    return emptyError(
+      "We couldn't build an outfit from your wardrobe for that request. Try another prompt.",
+      "NO_VALID_ITEMS"
+    );
+  }
+
+  return {
+    success: true,
+    outfitItems: validatedItems,
+    rationale: aiResponse.rationale || "",
+    stylingTips: (aiResponse.stylingTips || []).slice(0, 3),
   };
 }
 
-module.exports = { mockStyleMeLook };
+module.exports = {
+  processStyleMeRequest,
+  mockStyleMeLook: processStyleMeRequest,
+};
