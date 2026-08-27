@@ -11,9 +11,9 @@
 // FR-11: Wardrobe Analytics
 // FR-12: Manual Outfit Builder
 
-require("dotenv").config();
-
 const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+
 const fs = require("fs");
 const express = require("express");
 const cors = require("cors");

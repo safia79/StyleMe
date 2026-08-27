@@ -9,9 +9,26 @@ const Stripe = require("stripe");
 const prisma = require("../db");
 const requireAuth = require("../middleware/requireAuth");
 
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-
 const router = express.Router();
+
+// Stripe v17+ must be created lazily so the key is read after dotenv loads.
+let stripeClient = null;
+
+function getStripe() {
+  const key = (process.env.STRIPE_SECRET_KEY || "").trim();
+  const looksFake = /sk_test_xxx|REPLACE_ME|your.?key|placeholder/i.test(key) || key.length < 20;
+  if (!key || !key.startsWith("sk_") || looksFake) {
+    const error = new Error(
+      "Stripe is not configured. Put your real secret key (sk_test_...) from https://dashboard.stripe.com/apikeys into backend/.env as STRIPE_SECRET_KEY, then restart the backend.",
+    );
+    error.code = "STRIPE_NOT_CONFIGURED";
+    throw error;
+  }
+  if (!stripeClient) {
+    stripeClient = Stripe(key);
+  }
+  return stripeClient;
+}
 
 // $9.99/month or $95.88/year (20% off), amounts in cents for Stripe
 const PRICES = {
@@ -41,6 +58,13 @@ async function setUserPremium(userId) {
   await prisma.user.update({
     where: { id: userId },
     data: { accountType: "premium" },
+  });
+}
+
+async function setUserFree(userId) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { accountType: "free" },
   });
 }
 
@@ -79,10 +103,10 @@ router.post("/create-payment-intent", requireAuth, async (req, res) => {
   const price = PRICES[billingCycle] || PRICES.monthly;
 
   try {
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntent = await getStripe().paymentIntents.create({
       amount: price.amount,
       currency: CURRENCY,
-      automatic_payment_methods: { enabled: true },
+      payment_method_types: ["card"],
       metadata: {
         userId: String(req.session.userId),
         billingCycle: billingCycle === "annual" ? "annual" : "monthly",
@@ -91,8 +115,11 @@ router.post("/create-payment-intent", requireAuth, async (req, res) => {
 
     res.json({ clientSecret: paymentIntent.client_secret });
   } catch (err) {
-    console.error("Stripe create-payment-intent error:", err.message);
-    res.status(500).json({ error: "Could not start checkout. Please try again." });
+    console.error("Stripe create-payment-intent error:", err.type || err.code, err.message);
+    const status = err.code === "STRIPE_NOT_CONFIGURED" ? 503 : 500;
+    res.status(status).json({
+      error: err.message || "Could not start checkout. Please try again.",
+    });
   }
 });
 
@@ -104,7 +131,7 @@ router.post("/confirm", requireAuth, async (req, res) => {
   }
 
   try {
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const paymentIntent = await getStripe().paymentIntents.retrieve(paymentIntentId);
 
     if (paymentIntent.metadata.userId !== String(req.session.userId)) {
       return res.status(403).json({ error: "This payment does not belong to your account." });
@@ -127,6 +154,56 @@ router.post("/confirm", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("Stripe confirm error:", err.message);
     res.status(500).json({ error: "We couldn't confirm your payment. Please contact support." });
+  }
+});
+
+// POST /api/subscription/cancel
+router.post("/cancel", requireAuth, async (req, res) => {
+  try {
+    const subscription = await getSubscriptionForUser(req.session.userId);
+    if (!subscription) {
+      return res.status(404).json({ error: "No subscription found." });
+    }
+
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: { planStatus: "canceled" },
+    });
+    await setUserFree(req.session.userId);
+
+    res.json({ message: "Subscription canceled." });
+  } catch (err) {
+    console.error("subscription/cancel error:", err.message);
+    res.status(500).json({ error: "Could not cancel your subscription." });
+  }
+});
+
+// POST /api/subscription/start-trial
+router.post("/start-trial", requireAuth, async (req, res) => {
+  try {
+    const existing = await getSubscriptionForUser(req.session.userId);
+    if (existing) {
+      return res.status(409).json({ error: "You've already used your free trial." });
+    }
+
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 5);
+
+    await setUserPremium(req.session.userId);
+    // customerRef is required on the existing table; use "" because trials never touch Stripe.
+    const subscription = await prisma.subscription.create({
+      data: {
+        userId: req.session.userId,
+        customerRef: "",
+        expiryDate,
+        planStatus: "trialing",
+      },
+    });
+
+    res.json({ message: "Your 5-day free trial has started.", subscription });
+  } catch (err) {
+    console.error("subscription/start-trial error:", err.message);
+    res.status(500).json({ error: "Could not start your free trial." });
   }
 });
 
