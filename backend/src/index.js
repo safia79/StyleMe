@@ -26,10 +26,17 @@ const styleMeRoutes = require("./routes/styleme");
 const subscriptionRoutes = require("./routes/subscription");
 const profileRoutes = require("./routes/profile");
 const weatherRoutes = require("./routes/weather");
+const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const FRONTEND_ORIGINS = [
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+].filter((origin, index, list) => list.indexOf(origin) === index);
 
 // Make sure the uploads folder exists even on a fresh clone
 const uploadsDir = path.join(__dirname, "..", "uploads");
@@ -37,10 +44,16 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Let the React app (different port) call this API, including cookies
+// Let the React app (different port) call this API, including cookies.
+// Vite uses 5173 by default and 5174 if 5173 is already taken.
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin(origin, callback) {
+      if (!origin || FRONTEND_ORIGINS.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   }),
 );
@@ -82,6 +95,7 @@ app.use("/api/styleme", styleMeRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/weather", weatherRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.listen(PORT, () => {
   console.log(`StyleME backend listening on http://localhost:${PORT}`);

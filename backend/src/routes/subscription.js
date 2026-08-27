@@ -8,6 +8,7 @@ const express = require("express");
 const Stripe = require("stripe");
 const prisma = require("../db");
 const requireAuth = require("../middleware/requireAuth");
+const { createNotification, MESSAGES } = require("../notifications");
 
 const router = express.Router();
 
@@ -36,6 +37,8 @@ const PRICES = {
   annual: { amount: 9588 },
 };
 const CURRENCY = "aud";
+const PAYMENT_SETUP_UNAVAILABLE =
+  "Payment setup is temporarily unavailable — please try again later";
 
 function addBillingPeriod(date, billingCycle) {
   const result = new Date(date);
@@ -118,7 +121,7 @@ router.post("/create-payment-intent", requireAuth, async (req, res) => {
     console.error("Stripe create-payment-intent error:", err.type || err.code, err.message);
     const status = err.code === "STRIPE_NOT_CONFIGURED" ? 503 : 500;
     res.status(status).json({
-      error: err.message || "Could not start checkout. Please try again.",
+      error: PAYMENT_SETUP_UNAVAILABLE,
     });
   }
 });
@@ -149,11 +152,12 @@ router.post("/confirm", requireAuth, async (req, res) => {
       expiryDate,
       planStatus: "active",
     });
+    await createNotification(req.session.userId, MESSAGES.premiumWelcome);
 
     res.json({ message: "You are now premium.", subscription });
   } catch (err) {
     console.error("Stripe confirm error:", err.message);
-    res.status(500).json({ error: "We couldn't confirm your payment. Please contact support." });
+    res.status(500).json({ error: PAYMENT_SETUP_UNAVAILABLE });
   }
 });
 
@@ -170,6 +174,7 @@ router.post("/cancel", requireAuth, async (req, res) => {
       data: { planStatus: "canceled" },
     });
     await setUserFree(req.session.userId);
+    await createNotification(req.session.userId, MESSAGES.premiumCancelled);
 
     res.json({ message: "Subscription canceled." });
   } catch (err) {
@@ -199,6 +204,7 @@ router.post("/start-trial", requireAuth, async (req, res) => {
         planStatus: "trialing",
       },
     });
+    await createNotification(req.session.userId, MESSAGES.premiumWelcome);
 
     res.json({ message: "Your 5-day free trial has started.", subscription });
   } catch (err) {

@@ -249,12 +249,78 @@ a:hover {
   position: relative;
 }
 
+.navbar-bell-menu {
+  position: relative;
+}
+
 .navbar-bell {
+  position: relative;
   display: grid;
   place-items: center;
   width: 2.15rem;
   height: 2.15rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
   color: var(--oatmeal);
+  cursor: pointer;
+}
+
+.navbar-bell:hover,
+.navbar-bell[aria-expanded="true"] {
+  color: #fff;
+  background: rgba(243, 239, 233, 0.1);
+}
+
+.navbar-bell-dot {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.32rem;
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 50%;
+  background: #c4472c;
+  border: 1.5px solid var(--nav-bg);
+}
+
+.navbar-notifications {
+  width: min(22rem, calc(100vw - 2rem));
+  min-width: 16.5rem;
+  max-height: 20rem;
+  overflow: auto;
+  right: 0;
+}
+
+.navbar-notifications-empty {
+  margin: 0;
+  padding: 0.95rem 0.75rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.navbar-notification {
+  font-weight: 400;
+  white-space: normal;
+}
+
+.navbar-notification span {
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.navbar-notification.is-unread span {
+  font-weight: 700;
+}
+
+.navbar-notification.is-unread {
+  background: var(--terracotta-soft);
+}
+
+.navbar-notification.is-unread:hover,
+.navbar-notification.is-unread.active {
+  background: #ead6c9;
 }
 
 .navbar-account-menu {

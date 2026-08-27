@@ -8,6 +8,7 @@ const prisma = require("../db");
 const requireAuth = require("../middleware/requireAuth");
 const { isValidTags } = require("../tagOptions");
 const { mockAnalyseClothingImage } = require("../mockAi");
+const { createNotificationOnce, MESSAGES } = require("../notifications");
 
 const router = express.Router();
 router.use(requireAuth);
@@ -16,6 +17,7 @@ const uploadsDir = path.join(__dirname, "..", "..", "uploads");
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+const FREE_WARDROBE_LIMIT = 20;
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
@@ -156,6 +158,17 @@ router.post("/", async (req, res) => {
         season,
       },
     });
+
+    const [owner, itemCount] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: req.session.userId },
+        select: { accountType: true },
+      }),
+      prisma.wardrobeItem.count({ where: { userId: req.session.userId } }),
+    ]);
+    if (owner?.accountType === "free" && itemCount >= FREE_WARDROBE_LIMIT) {
+      await createNotificationOnce(req.session.userId, MESSAGES.wardrobeLimit);
+    }
 
     return res.status(201).json({ item });
   } catch (err) {

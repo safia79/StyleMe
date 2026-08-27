@@ -17,20 +17,28 @@ const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 const FREE_FEATURES = [
-  { label: "Upload up to 20 items", included: true },
   { label: "Basic outfit suggestions", included: true },
-  { label: "Style Me (Generative AI)", included: false },
-  { label: "Unlimited wardrobe", included: false },
-  { label: "Weather-aware filtering", included: false },
+  { label: "Wardrobe Analytics", included: true },
+  { label: "Upload wardrobe items (up to 20 items)", included: true },
 ];
 
 const PREMIUM_FEATURES = [
   { label: "Unlimited wardrobe items", included: true },
-  { label: "AI outfit suggestions", included: true },
+  { label: "Weather information on recommendations", included: true },
   { label: "Style Me — Generative AI", included: true },
-  { label: "Weather-aware filtering", included: true },
-  { label: "Priority support", included: true },
+  { label: "Wardrobe Analytics", included: true },
 ];
+
+const PAYMENT_SETUP_UNAVAILABLE =
+  "Payment setup is temporarily unavailable — please try again later";
+
+function publicPaymentError(message, fallback = PAYMENT_SETUP_UNAVAILABLE) {
+  const text = typeof message === "string" ? message : "";
+  if (!text || /sk_(test|live)_|pk_(test|live)_|Expired API Key|Invalid API Key/i.test(text)) {
+    return fallback;
+  }
+  return text;
+}
 
 const PRICING = {
   monthly: { amountLabel: "$9.99", period: "/ month" },
@@ -77,7 +85,7 @@ function CheckoutForm({ billingCycle, clientSecret, onSuccess, onCancel }) {
     });
 
     if (stripeError) {
-      setError(stripeError.message || "Your card was declined.");
+      setError(publicPaymentError(stripeError.message, "Your card was declined."));
       setSubmitting(false);
       return;
     }
@@ -90,7 +98,7 @@ function CheckoutForm({ billingCycle, clientSecret, onSuccess, onCancel }) {
       setSubmitting(false);
 
       if (!result.ok) {
-        setError(result.data.error || "We took your payment but couldn't activate Premium. Contact support.");
+        setError(publicPaymentError(result.data.error, "We took your payment but couldn't activate Premium. Contact support."));
         return;
       }
 
@@ -182,9 +190,10 @@ function Subscription() {
     setStartError("");
     setTrialError("");
     if (!publishableKey) {
-      setStartError(
-        "Stripe publishable key is missing. Add VITE_STRIPE_PUBLISHABLE_KEY (pk_test_...) to frontend/.env and restart the frontend.",
+      console.error(
+        "Stripe publishable key is missing. Add VITE_STRIPE_PUBLISHABLE_KEY to frontend/.env and restart the frontend.",
       );
+      setStartError(PAYMENT_SETUP_UNAVAILABLE);
       return;
     }
     setStarting(true);
@@ -195,7 +204,7 @@ function Subscription() {
     setStarting(false);
 
     if (!result.ok) {
-      setStartError(result.data.error || "Couldn't start checkout. Please try again.");
+      setStartError(publicPaymentError(result.data.error));
       return;
     }
     setCheckout({ clientSecret: result.data.clientSecret });
