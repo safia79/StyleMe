@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
+import NotificationBell from "./NotificationBell.jsx";
 import UiIcon from "./UiIcons.jsx";
 
 const appLinks = [
@@ -130,9 +131,10 @@ function Navbar() {
 
       {user ? (
         <div className="navbar-account">
-          <span className="navbar-bell" role="img" aria-label="Notifications">
-            <UiIcon name="bell" size={18} />
-          </span>
+          <NotificationBell
+            onOpen={() => setAccountOpen(false)}
+            closeWhen={accountOpen || menuOpen}
+          />
 
           <div className="navbar-account-menu" ref={accountRef}>
             <button
@@ -140,7 +142,9 @@ function Navbar() {
               className="navbar-user-chip"
               aria-haspopup="menu"
               aria-expanded={accountOpen}
-              onClick={() => setAccountOpen((open) => !open)}
+              onClick={() => {
+                setAccountOpen((open) => !open);
+              }}
             >
               <span className="navbar-avatar" aria-hidden="true">
                 {firstInitial(user.name)}

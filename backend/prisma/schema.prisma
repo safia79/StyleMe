@@ -26,9 +26,10 @@ model User {
   accountType  AccountType  @default(free)
   createdAt    DateTime     @default(now())
 
-  wardrobeItems WardrobeItem[]
-  savedOutfits  SavedOutfit[]
-  subscriptions Subscription[]
+  wardrobeItems  WardrobeItem[]
+  savedOutfits   SavedOutfit[]
+  subscriptions  Subscription[]
+  notifications  Notification[]
 
   @@map("users")
 }
@@ -75,4 +76,18 @@ model Subscription {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
+}
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }
