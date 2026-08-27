@@ -13,7 +13,8 @@ import { apiRequest } from "../api.js";
 import { ButtonSpinner } from "../components/StatusPanel.jsx";
 import { useToast } from "../ToastContext.jsx";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 const FREE_FEATURES = [
   { label: "Upload up to 20 items", included: true },
@@ -149,11 +150,16 @@ function CheckoutForm({ billingCycle, clientSecret, onSuccess, onCancel }) {
 
 function Subscription() {
   const { user, refreshUser } = useAuth();
+  const { showToast } = useToast();
   const [subscription, setSubscription] = useState(null);
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [checkout, setCheckout] = useState(null);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState("");
+  const [trialStarting, setTrialStarting] = useState(false);
+  const [trialError, setTrialError] = useState("");
+  const [canceling, setCanceling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   const isPremium = user?.accountType === "premium";
 
@@ -174,6 +180,13 @@ function Subscription() {
 
   async function handleStartCheckout() {
     setStartError("");
+    setTrialError("");
+    if (!publishableKey) {
+      setStartError(
+        "Stripe publishable key is missing. Add VITE_STRIPE_PUBLISHABLE_KEY (pk_test_...) to frontend/.env and restart the frontend.",
+      );
+      return;
+    }
     setStarting(true);
     const result = await apiRequest("/api/subscription/create-payment-intent", {
       method: "POST",
@@ -194,6 +207,44 @@ function Subscription() {
     setCheckout(null);
   }
 
+  async function handleStartTrial() {
+    setTrialError("");
+    setStartError("");
+    setTrialStarting(true);
+    const result = await apiRequest("/api/subscription/start-trial", { method: "POST" });
+    setTrialStarting(false);
+
+    if (!result.ok) {
+      setTrialError(result.data.error || "Couldn't start your free trial. Please try again.");
+      return;
+    }
+
+    showToast(result.data.message || "Your 5-day free trial has started.");
+    await refreshUser();
+    setSubscription(result.data.subscription || null);
+  }
+
+  async function handleCancel() {
+    const confirmed = window.confirm(
+      "Cancel your Premium subscription? You'll lose access to premium features immediately.",
+    );
+    if (!confirmed) return;
+
+    setCancelError("");
+    setCanceling(true);
+    const result = await apiRequest("/api/subscription/cancel", { method: "POST" });
+    setCanceling(false);
+
+    if (!result.ok) {
+      setCancelError(result.data.error || "Couldn't cancel your subscription. Please try again.");
+      return;
+    }
+
+    showToast(result.data.message || "Subscription canceled.");
+    await refreshUser();
+    setSubscription(result.data.subscription || null);
+  }
+
   return (
     <main className="page page-wide subscription-page">
       <header className="page-header">
@@ -207,7 +258,9 @@ function Subscription() {
       {isPremium ? (
         <section className="panel-card form-page-card">
           <div className="plan-banner plan-banner-premium">
-            <strong>Premium</strong>
+            <strong>
+              {subscription?.planStatus === "trialing" ? "Premium (Free Trial)" : "Premium"}
+            </strong>
             {subscription?.expiryDate ? (
               <span>Expires {formatDate(subscription.expiryDate)}</span>
             ) : (
@@ -218,6 +271,15 @@ function Subscription() {
           <p className="form-switch">
             Open <Link to="/styleme">StyleMe</Link> — no extra login needed.
           </p>
+          {cancelError ? (
+            <p className="form-error" role="alert">
+              {cancelError}
+            </p>
+          ) : null}
+          <button className="btn-cancel" type="button" onClick={handleCancel} disabled={canceling}>
+            {canceling ? <ButtonSpinner /> : null}
+            {canceling ? "Canceling..." : "Cancel subscription"}
+          </button>
         </section>
       ) : (
         <section className="panel-card pricing-card">
@@ -277,16 +339,35 @@ function Subscription() {
                 </p>
               ) : null}
 
-              <button className="btn" type="button" onClick={handleStartCheckout} disabled={starting}>
+              <button
+                className="btn"
+                type="button"
+                onClick={handleStartCheckout}
+                disabled={starting || trialStarting}
+              >
                 {starting ? <ButtonSpinner /> : null}
                 {starting ? "Loading..." : "Upgrade Now"}
+              </button>
+              {trialError ? (
+                <p className="form-error" role="alert">
+                  {trialError}
+                </p>
+              ) : null}
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={handleStartTrial}
+                disabled={trialStarting || starting}
+              >
+                {trialStarting ? <ButtonSpinner /> : null}
+                {trialStarting ? "Starting trial..." : "Start 5-day free trial"}
               </button>
               <p className="plan-secure-note">🔒 Secured by Stripe · Cancel anytime</p>
             </div>
           </div>
 
           {checkout ? (
-            <Elements stripe={stripePromise} options={{ clientSecret: checkout.clientSecret }}>
+            <Elements stripe={stripePromise}>
               <CheckoutForm
                 billingCycle={billingCycle}
                 clientSecret={checkout.clientSecret}
