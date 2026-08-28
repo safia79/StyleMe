@@ -28,8 +28,15 @@ function buildRationale(items, occasionLabel) {
   return `This ${first.colour.toLowerCase()} ${first.category.toLowerCase()} pairs well with your ${second.colour.toLowerCase()} ${second.category.toLowerCase()} for a ${look} look.`;
 }
 
-// Pick 2-4 items, never two from the same category
-function pickDistinctCategoryItems(items, preferredFormalities, preferredStyles) {
+// Pick 2-4 items, never two from the same category.
+// preferredSeasons / deprioritizeItem are used by FR-05 weather filtering.
+function pickDistinctCategoryItems(
+  items,
+  preferredFormalities,
+  preferredStyles,
+  preferredSeasons,
+  deprioritizeItem,
+) {
   const byCategory = {};
   for (const item of shuffle(items)) {
     if (!byCategory[item.category]) {
@@ -50,6 +57,14 @@ function pickDistinctCategoryItems(items, preferredFormalities, preferredStyles)
     if (preferredStyles && preferredStyles.length) {
       const match = ranked.filter((item) => preferredStyles.includes(item.style));
       if (match.length) ranked = match;
+    }
+    if (preferredSeasons && preferredSeasons.length) {
+      const match = ranked.filter((item) => preferredSeasons.includes(item.season));
+      if (match.length) ranked = match;
+    }
+    if (typeof deprioritizeItem === "function") {
+      const preferred = ranked.filter((item) => !deprioritizeItem(item));
+      if (preferred.length) ranked = preferred;
     }
     return ranked[0];
   }
@@ -83,9 +98,72 @@ function pickDistinctCategoryItems(items, preferredFormalities, preferredStyles)
   return picked.length >= 2 ? picked : null;
 }
 
+function pickByPrefs(pool, preferredSeasons) {
+  if (!pool || pool.length === 0) return null;
+  let ranked = pool;
+  if (preferredSeasons && preferredSeasons.length) {
+    const match = ranked.filter((item) => preferredSeasons.includes(item.season));
+    if (match.length) ranked = match;
+  }
+  return ranked[0];
+}
+
+function groupByCategory(items) {
+  const byCategory = {};
+  for (const item of shuffle(items)) {
+    if (!byCategory[item.category]) byCategory[item.category] = [];
+    byCategory[item.category].push(item);
+  }
+  return byCategory;
+}
+
+// Dress, or Top + Bottom. Extra layers optional. Never invent a 2-item
+// outfit from Top + Outerwear when a bottom/dress is required.
+function pickStructuredOutfit(items, preferredSeasons) {
+  const byCategory = groupByCategory(items);
+
+  function addExtras(picked, used) {
+    for (const category of ["Shoes", "Outerwear", "Accessory"]) {
+      if (picked.length >= 4) break;
+      if (used.has(category)) continue;
+      const extra = pickByPrefs(byCategory[category], preferredSeasons);
+      if (!extra) continue;
+      picked.push(extra);
+      used.add(category);
+    }
+  }
+
+  const dress = pickByPrefs(byCategory.Dress, preferredSeasons);
+  if (dress) {
+    const picked = [dress];
+    const used = new Set(["Dress"]);
+    addExtras(picked, used);
+    if (picked.length >= 2) return picked;
+  }
+
+  const top = pickByPrefs(byCategory.Top, preferredSeasons);
+  const bottom = pickByPrefs(byCategory.Bottom, preferredSeasons);
+  if (top && bottom) {
+    const picked = [top, bottom];
+    const used = new Set(["Top", "Bottom"]);
+    addExtras(picked, used);
+    return picked;
+  }
+
+  return null;
+}
+
+function canBuildStructuredOutfit(items) {
+  const categories = new Set(items.map((item) => item.category));
+  if (categories.has("Dress")) return true;
+  return categories.has("Top") && categories.has("Bottom");
+}
+
 module.exports = {
   shuffle,
   distinctCategories,
   buildRationale,
   pickDistinctCategoryItems,
+  pickStructuredOutfit,
+  canBuildStructuredOutfit,
 };

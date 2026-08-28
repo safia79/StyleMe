@@ -11,6 +11,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { useAuth } from "../AuthContext.jsx";
 import { apiRequest } from "../api.js";
 import { ButtonSpinner } from "../components/StatusPanel.jsx";
+import UiIcon from "../components/UiIcons.jsx";
 import { useToast } from "../ToastContext.jsx";
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
@@ -27,6 +28,13 @@ const PREMIUM_FEATURES = [
   { label: "Weather information on recommendations", included: true },
   { label: "Style Me — Generative AI", included: true },
   { label: "Wardrobe Analytics", included: true },
+];
+
+const PREMIUM_UNLOCKED = [
+  "Unlimited wardrobe items",
+  "Weather information",
+  "Style Me — Generative AI",
+  "Wardrobe Analytics",
 ];
 
 const PAYMENT_SETUP_UNAVAILABLE =
@@ -265,31 +273,61 @@ function Subscription() {
       </header>
 
       {isPremium ? (
-        <section className="panel-card form-page-card">
-          <div className="plan-banner plan-banner-premium">
-            <strong>
-              {subscription?.planStatus === "trialing" ? "Premium (Free Trial)" : "Premium"}
-            </strong>
-            {subscription?.expiryDate ? (
-              <span>Expires {formatDate(subscription.expiryDate)}</span>
-            ) : (
-              <span>Premium features are unlocked.</span>
-            )}
-          </div>
-          <p>Your premium features are already unlocked. You can use StyleMe without logging in again.</p>
-          <p className="form-switch">
-            Open <Link to="/styleme">StyleMe</Link> — no extra login needed.
-          </p>
-          {cancelError ? (
-            <p className="form-error" role="alert">
-              {cancelError}
-            </p>
-          ) : null}
-          <button className="btn-cancel" type="button" onClick={handleCancel} disabled={canceling}>
-            {canceling ? <ButtonSpinner /> : null}
-            {canceling ? "Canceling..." : "Cancel subscription"}
-          </button>
-        </section>
+        <div className="premium-status-grid">
+          <article className="plan-card plan-card-premium premium-status-card">
+            <span className="plan-badge">
+              {subscription?.planStatus === "trialing" ? "Trial" : "Premium"}
+            </span>
+            <div className="premium-status-heading">
+              <span className="shortcut-icon" aria-hidden="true">
+                <UiIcon name="sparkle" size={22} />
+              </span>
+              <div>
+                <p className="page-kicker">Current plan</p>
+                <h2>
+                  {subscription?.planStatus === "trialing" ? "Premium (Free Trial)" : "Premium"}
+                </h2>
+                {subscription?.expiryDate ? (
+                  <p>Expires {formatDate(subscription.expiryDate)}</p>
+                ) : (
+                  <p>Premium features are unlocked.</p>
+                )}
+              </div>
+            </div>
+
+            <h3 className="premium-unlock-heading">What&apos;s unlocked</h3>
+            <ul className="plan-features">
+              {PREMIUM_UNLOCKED.map((label) => (
+                <li key={label}>
+                  <span className="plan-feature-icon">✓</span>
+                  {label}
+                </li>
+              ))}
+            </ul>
+
+            {cancelError ? (
+              <p className="form-error" role="alert">
+                {cancelError}
+              </p>
+            ) : null}
+            <button className="btn btn-danger" type="button" onClick={handleCancel} disabled={canceling}>
+              {canceling ? <ButtonSpinner /> : null}
+              {canceling ? "Canceling..." : "Cancel subscription"}
+            </button>
+          </article>
+
+          <Link className="shortcut-card" to="/styleme">
+            <span className="shortcut-icon">
+              <UiIcon name="sparkle" size={22} />
+            </span>
+            <strong>StyleMe</strong>
+            <span>Describe a look and get a styled outfit from your wardrobe.</span>
+            <span className="shortcut-cta">
+              Open StyleMe
+              <UiIcon name="arrow" size={14} />
+            </span>
+          </Link>
+        </div>
       ) : (
         <section className="panel-card pricing-card">
           <div className="billing-toggle">

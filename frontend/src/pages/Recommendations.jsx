@@ -15,45 +15,72 @@ const OCCASIONS = ["Casual", "Work", "Formal", "Date Night"];
 function Recommendations() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const [temperature, setTemperature] = useState(null);
+  const [weather, setWeather] = useState(null);
   const [occasion, setOccasion] = useState("");
   const [outfits, setOutfits] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [savedKeys, setSavedKeys] = useState([]);
+  const [shortage, setShortage] = useState(null);
+  const [ignoreWeather, setIgnoreWeather] = useState(false);
+  const [ignoreOccasion, setIgnoreOccasion] = useState(false);
+  const [lastFlags, setLastFlags] = useState({ skipWeather: false, skipOccasion: false });
 
-  function handleWeatherChange(weather) {
-    setTemperature(weather && typeof weather.temperature === "number" ? weather.temperature : null);
+  function handleWeatherChange(nextWeather) {
+    setWeather(nextWeather && typeof nextWeather.temperature === "number" ? nextWeather : null);
   }
 
   function outfitKey(outfit) {
     return (outfit.items || []).map((item) => item.id).join("-");
   }
 
-  async function handleGenerate(event) {
-    event.preventDefault();
+  async function generateOutfits({ skipWeather = false, skipOccasion = false } = {}) {
     if (loading) return;
     setError("");
     setOutfits([]);
+    setShortage(null);
     setLoading(true);
 
+    const withoutWeather = Boolean(skipWeather);
+    const withoutOccasion = Boolean(skipOccasion);
     const result = await apiRequest("/api/recommendations/generate", {
       method: "POST",
       body: {
         occasion,
-        temperature,
+        ignoreWeather: withoutWeather,
+        ignoreOccasion: withoutOccasion,
+        temperature:
+          !withoutWeather && weather && typeof weather.temperature === "number"
+            ? weather.temperature
+            : null,
+        conditions: !withoutWeather && weather && weather.conditions ? weather.conditions : null,
       },
     });
 
     setLoading(false);
+    setLastFlags({ skipWeather: withoutWeather, skipOccasion: withoutOccasion });
 
     if (!result.ok) {
       setError(result.data.error || "Could not generate an outfit.");
       return;
     }
 
+    if (result.data.shortage) {
+      setIgnoreWeather(false);
+      setIgnoreOccasion(false);
+      setShortage(result.data.shortage);
+      return;
+    }
+
+    setIgnoreWeather(withoutWeather);
+    setIgnoreOccasion(withoutOccasion);
     setOutfits(result.data.outfits || []);
+  }
+
+  async function handleGenerate(event) {
+    event.preventDefault();
+    await generateOutfits({ skipWeather: false, skipOccasion: false });
   }
 
   async function handleSave(outfit) {
@@ -124,11 +151,63 @@ function Recommendations() {
 
       {loading ? <LoadingState message="Finding outfits from your wardrobe..." /> : null}
 
-      {!loading && outfits.length === 0 && !error ? (
+      {shortage && !loading ? (
+        <EmptyState
+          title={
+            shortage.type === "occasion"
+              ? `No matching ${shortage.occasion || occasion || "occasion"} outfit`
+              : "Nothing weather-appropriate right now"
+          }
+          message={shortage.message}
+          action={
+            shortage.type === "occasion" ? (
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() =>
+                  generateOutfits({
+                    skipWeather: lastFlags.skipWeather,
+                    skipOccasion: true,
+                  })
+                }
+              >
+                {`Show options without the ${shortage.occasion || occasion || "occasion"} filter`}
+              </button>
+            ) : (
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() =>
+                  generateOutfits({
+                    skipWeather: true,
+                    skipOccasion: lastFlags.skipOccasion,
+                  })
+                }
+              >
+                Show options without weather filtering
+              </button>
+            )
+          }
+        />
+      ) : null}
+
+      {!loading && outfits.length === 0 && !error && !shortage ? (
         <EmptyState
           title="No outfits to show yet"
           message="Choose an occasion if you like, then generate a look from the clothes you already own."
         />
+      ) : null}
+
+      {ignoreWeather && outfits.length > 0 && !loading ? (
+        <p className="placeholder-note" role="status">
+          Showing outfits without weather filtering.
+        </p>
+      ) : null}
+
+      {ignoreOccasion && outfits.length > 0 && !loading ? (
+        <p className="placeholder-note" role="status">
+          Showing outfits without the {occasion || "occasion"} filter.
+        </p>
       ) : null}
 
       <div className="outfit-list">
