@@ -76,12 +76,12 @@ Then open **http://localhost:5173** in your browser (use `localhost`, not `127.0
 | --- | --- | --- |
 | FR-01 | User Registration | Fully working |
 | FR-02 | User Login & Session | Fully working |
-| FR-03 | Clothing Upload & AI Tagging | Fully working (AI tags are mocked) |
-| FR-04 | AI Outfit Recommendation | Fully working (recommendations are mocked) |
+| FR-03 | Clothing Upload & AI Tagging | Fully working (AI tags are working) |
+| FR-04 | AI Outfit Recommendation | Fully working |
 | FR-05 | Weather-Based Filtering | Fully working |
-| FR-06 | Style Me (Generative AI Prompt) | Fully working (premium path mocked) |
+| FR-06 | Style Me (Generative AI Prompt) | Fully working (Google Gemini ) |
 | FR-07 | Wardrobe Dashboard | Fully working |
-| FR-08 | Premium Subscription | Fully working (checkout is mocked — not a real payment) |
+| FR-08 | Premium Subscription | Fully working (checkout workng with stripe test) |
 | FR-09 | Outfit History | Fully working |
 | FR-10 | Profile & Preferences | Fully working |
 | FR-11 | Wardrobe Analytics | Fully working |
