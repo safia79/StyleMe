@@ -54,10 +54,9 @@ function Login() {
 
   return (
     <AuthShell>
-      <div className="auth-card">
-        <p className="page-kicker">Welcome back</p>
-        <h1>Login</h1>
-        <p>Sign in to your StyleME account.</p>
+      <p className="page-kicker">Welcome back</p>
+      <h1>Login</h1>
+      <p>Sign in to your StyleME account.</p>
 
         <form className="form" onSubmit={handleSubmit} noValidate>
           <label className="form-field">
@@ -116,7 +115,6 @@ function Login() {
         </p>
 
         <AuthHighlights />
-      </div>
     </AuthShell>
   );
 }

@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
 import NotificationBell from "./NotificationBell.jsx";
+import BrandMark from "./BrandMark.jsx";
 import UiIcon from "./UiIcons.jsx";
 
 const appLinks = [
@@ -74,7 +75,10 @@ function Navbar() {
   if (loading) {
     return (
       <nav className="navbar">
-        <span className="navbar-brand">StyleME</span>
+        <span className="navbar-brand">
+          <BrandMark size={26} />
+          StyleME
+        </span>
       </nav>
     );
   }
@@ -85,6 +89,7 @@ function Navbar() {
     <nav className={`navbar ${user ? "is-auth" : "is-guest"}`}>
       <div className="navbar-brand-group">
         <NavLink to={user ? "/dashboard" : "/login"} end className="navbar-brand">
+          <BrandMark size={26} />
           StyleME
         </NavLink>
         {user ? (

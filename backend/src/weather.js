@@ -9,6 +9,10 @@ dns.setDefaultResultOrder("ipv4first");
 const GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const TIMEOUT_MS = 8000;
+const CACHE_TTL_MS = 30 * 60 * 1000; // R02: 30 minutes per city
+
+const weatherCache = new Map(); // cityKey -> { weather, expiresAt }
+const inflight = new Map(); // cityKey -> Promise
 
 const WEATHER_LABELS = {
   0: "Clear",
@@ -50,13 +54,11 @@ function fetchWithTimeout(url) {
   return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
-async function fetchCityWeather(city) {
-  const trimmed = typeof city === "string" ? city.trim() : "";
-  if (!trimmed) {
-    console.error("Weather skipped: no city on the account");
-    return null;
-  }
+function cacheKey(city) {
+  return city.trim().toLowerCase();
+}
 
+async function fetchCityWeatherUncached(trimmed) {
   const geoUrl = `${GEOCODE_URL}?name=${encodeURIComponent(trimmed)}&count=1&language=en&format=json`;
   console.log("Open-Meteo geocode:", geoUrl);
 
@@ -97,6 +99,40 @@ async function fetchCityWeather(city) {
     temperature: Math.round(current.temperature_2m),
     conditions: weatherLabel(current.weather_code),
   };
+}
+
+async function fetchCityWeather(city) {
+  const trimmed = typeof city === "string" ? city.trim() : "";
+  if (!trimmed) {
+    console.error("Weather skipped: no city on the account");
+    return null;
+  }
+
+  const key = cacheKey(trimmed);
+  const cached = weatherCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.weather;
+  }
+
+  if (inflight.has(key)) {
+    return inflight.get(key);
+  }
+
+  const pending = fetchCityWeatherUncached(trimmed)
+    .then((weather) => {
+      if (weather) {
+        weatherCache.set(key, { weather, expiresAt: Date.now() + CACHE_TTL_MS });
+      }
+      inflight.delete(key);
+      return weather;
+    })
+    .catch((err) => {
+      inflight.delete(key);
+      throw err;
+    });
+
+  inflight.set(key, pending);
+  return pending;
 }
 
 module.exports = { fetchCityWeather };

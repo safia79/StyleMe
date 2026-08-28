@@ -108,8 +108,7 @@ function ForgotPassword() {
 
   return (
     <AuthShell>
-      <div className="auth-card">
-        <p className="page-kicker">Account</p>
+      <p className="page-kicker">Account</p>
         <h1>Forgot password</h1>
 
         {step === "email" ? (
@@ -238,7 +237,6 @@ function ForgotPassword() {
         ) : null}
 
         <AuthHighlights />
-      </div>
     </AuthShell>
   );
 }

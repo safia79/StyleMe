@@ -94,10 +94,9 @@ function Register() {
 
   return (
     <AuthShell>
-      <div className="auth-card">
-        <p className="page-kicker">Join StyleME</p>
-        <h1>Register</h1>
-        <p>Create a StyleME account.</p>
+      <p className="page-kicker">Join StyleME</p>
+      <h1>Register</h1>
+      <p>Create a StyleME account.</p>
 
         <form className="form" onSubmit={handleSubmit} noValidate>
           <label className="form-field">
@@ -148,6 +147,7 @@ function Register() {
                 onChange={(event) => handleChange("password", event.target.value)}
               />
             </span>
+            <span className="field-hint">Must be at least 8 characters</span>
             {errors.password ? <span className="field-error">{errors.password}</span> : null}
           </label>
 
@@ -184,7 +184,6 @@ function Register() {
         </p>
 
         <AuthHighlights />
-      </div>
     </AuthShell>
   );
 }

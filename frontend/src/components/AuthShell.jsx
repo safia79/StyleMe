@@ -1,3 +1,4 @@
+import BrandMark from "./BrandMark.jsx";
 import UiIcon from "./UiIcons.jsx";
 
 const HIGHLIGHTS = [
@@ -25,8 +26,20 @@ export function AuthHighlights() {
 function AuthShell({ children }) {
   return (
     <main className="auth-shell">
-      <section className="auth-form-col">{children}</section>
+      <section className="auth-form-col">
+        <div className="auth-card">
+          <div className="auth-brand">
+            <BrandMark size={32} />
+            <span>StyleME</span>
+          </div>
+          {children}
+        </div>
+      </section>
       <aside className="auth-art" aria-hidden="true">
+        <div className="auth-art-pattern" />
+        <span className="auth-orb auth-orb-a" />
+        <span className="auth-orb auth-orb-b" />
+        <span className="auth-ring" />
         <div className="auth-art-copy">
           <p className="auth-art-kicker">Your closet, considered</p>
           <h2>Looks that feel like you</h2>

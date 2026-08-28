@@ -25,6 +25,7 @@ model User {
   city         String
   accountType  AccountType  @default(free)
   createdAt    DateTime     @default(now())
+  lastLoginAt  DateTime?
 
   wardrobeItems  WardrobeItem[]
   savedOutfits   SavedOutfit[]
@@ -76,7 +77,6 @@ model Subscription {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
-}
 }
 
 model Notification {

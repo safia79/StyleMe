@@ -60,17 +60,6 @@ function validateLoginInput(body) {
   return { email, password };
 }
 
-function toPublicUser(user) {
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    city: user.city,
-    accountType: user.accountType,
-    createdAt: user.createdAt,
-  };
-}
-
 // FR-01: create an account, hash the password, then start a session
 router.post("/register", async (req, res) => {
   try {
@@ -97,6 +86,7 @@ router.post("/register", async (req, res) => {
         email,
         passwordHash,
         city, // optional on the form; empty string if left blank (schema requires a string)
+        lastLoginAt: new Date(),
       },
       select: publicUserSelect,
     });
@@ -142,9 +132,15 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    req.session.userId = user.id;
+    const loggedInUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+      select: publicUserSelect,
+    });
 
-    return res.json({ user: toPublicUser(user) });
+    req.session.userId = loggedInUser.id;
+
+    return res.json({ user: loggedInUser });
   } catch (err) {
     console.error("Login error:", err);
     return res.status(500).json({ error: "Something went wrong. Please try again." });
