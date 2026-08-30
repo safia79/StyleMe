@@ -1521,6 +1521,33 @@ a.btn:hover {
   box-shadow: 0 16px 28px rgba(140, 58, 30, 0.36);
 }
 
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0 0.85rem !important;
+  color: var(--muted) !important;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auth-or::before,
+.auth-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--oatmeal);
+}
+
+.auth-card .btn.btn-secondary:hover:not(:disabled) {
+  background: var(--terracotta-soft);
+  color: var(--terracotta);
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+
 .input-with-icon {
   position: relative;
   display: block;

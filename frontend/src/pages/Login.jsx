@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { API_BASE } from "../api.js";
 import { useAuth } from "../AuthContext.jsx";
 import AuthShell, { AuthHighlights } from "../components/AuthShell.jsx";
 import { ButtonSpinner } from "../components/StatusPanel.jsx";
@@ -109,6 +110,11 @@ function Login() {
             {submitting ? "Signing in..." : "Sign in"}
           </button>
         </form>
+
+        <p className="auth-or">or</p>
+        <a className="btn btn-secondary" href={`${API_BASE}/api/auth/google`}>
+          Continue with Google
+        </a>
 
         <p className="form-switch">
           New to StyleME? <Link to="/register">Create an account</Link>
