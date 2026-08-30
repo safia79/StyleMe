@@ -4,6 +4,7 @@
 
 const express = require("express");
 const bcrypt = require("bcrypt");
+const passport = require("passport");
 const prisma = require("../db");
 const { createResetToken, consumeResetToken } = require("../passwordReset");
 
@@ -256,5 +257,20 @@ router.post("/logout", (req, res) => {
     return res.json({ message: "Signed out" });
   });
 });
+
+router.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] }),
+);
+
+router.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: process.env.FRONTEND_URL + "/login",
+  }),
+  (req, res) => {
+    res.redirect(process.env.FRONTEND_URL + "/dashboard");
+  },
+);
 
 module.exports = router;

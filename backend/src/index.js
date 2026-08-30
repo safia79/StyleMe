@@ -18,6 +18,7 @@ const fs = require("fs");
 const express = require("express");
 const cors = require("cors");
 const session = require("express-session");
+const passport = require("passport");
 const authRoutes = require("./routes/auth");
 const wardrobeRoutes = require("./routes/wardrobe");
 const outfitRoutes = require("./routes/outfits");
@@ -75,6 +76,10 @@ app.use(
     },
   }),
 );
+
+require("./config/passport");
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Serve uploaded clothing images at http://localhost:3001/uploads/<filename>
 app.use("/uploads", express.static(uploadsDir));
