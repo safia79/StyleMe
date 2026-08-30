@@ -269,6 +269,7 @@ router.get(
     failureRedirect: process.env.FRONTEND_URL + "/login",
   }),
   (req, res) => {
+    req.session.userId = req.user.id;
     res.redirect(process.env.FRONTEND_URL + "/dashboard");
   },
 );

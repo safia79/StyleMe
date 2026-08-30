@@ -1,5 +1,6 @@
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const prisma = require("../db");
 
 passport.use(
   new GoogleStrategy(
@@ -8,20 +9,53 @@ passport.use(
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: process.env.GOOGLE_CALLBACK_URL,
     },
-    (accessToken, refreshToken, profile, done) => {
-      // TODO: look up or create user via backend/src/db.js
-      done(null, profile);
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const googleId = profile.id;
+
+        const byGoogleId = await prisma.user.findUnique({ where: { googleId } });
+        if (byGoogleId) {
+          return done(null, byGoogleId);
+        }
+
+        const email = String(profile.emails[0].value).trim().toLowerCase();
+        const byEmail = await prisma.user.findUnique({ where: { email } });
+        if (byEmail) {
+          const linked = await prisma.user.update({
+            where: { id: byEmail.id },
+            data: { googleId },
+          });
+          return done(null, linked);
+        }
+
+        const created = await prisma.user.create({
+          data: {
+            email,
+            googleId,
+            name: profile.displayName,
+            passwordHash: null,
+            city: "",
+          },
+        });
+        return done(null, created);
+      } catch (err) {
+        return done(err);
+      }
     },
   ),
 );
 
-// Placeholder — replace once we wire up real user lookup
-passport.serializeUser((profile, done) => {
-  done(null, profile.id);
+passport.serializeUser((user, done) => {
+  done(null, user.id);
 });
 
-passport.deserializeUser((id, done) => {
-  done(null, { id });
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id } });
+    done(null, user);
+  } catch (err) {
+    done(err);
+  }
 });
 
 module.exports = passport;
