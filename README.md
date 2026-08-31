@@ -13,7 +13,7 @@ StyleME is an AI-powered personal wardrobe management and outfit recommendation 
   - **Google Gemini API:** Vision-based clothing attribute tagging (FR-03) and generative outfit styling (FR-06)
   - **Stripe API:** Secure card checkout, PaymentIntents, and subscription management (FR-08)
   - **Open-Meteo API:** Real-time geocoding and weather forecasts (FR-05)
-- **Authentication & Security:** Email & password authentication with `bcrypt` password hashing and `express-session` HTTP-only cookies
+- **Authentication & Security:** Email & password authentication (with `bcrypt` password hashing) and Google OAuth login (via Passport.js, linked to existing users by matching email address), with `express-session` HTTP-only cookies
 - **File Storage:** Local disk storage in `backend/uploads` with support for JPG, PNG, and WEBP formats (up to 10MB)
 
 ---
@@ -104,6 +104,11 @@ FRONTEND_URL="http://localhost:5173"
 # Google Gemini API key (FR-03 & FR-06)
 GEMINI_API_KEY="AIzaSy..."
 GEMINI_VISION_MODEL="gemini-3.5-flash"
+
+# Google OAuth (FR-02)
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+GOOGLE_CALLBACK_URL="http://localhost:3001/api/auth/google/callback"
 
 # Stripe Secret Key (FR-08)
 STRIPE_SECRET_KEY="sk_test_..."
@@ -218,7 +223,7 @@ Every primary module includes an explicit comment header referencing its corresp
 | Requirement | Primary Backend File(s) | Primary Frontend File(s) | Key Comment Header |
 | :--- | :--- | :--- | :--- |
 | **FR-01** | `backend/src/routes/auth.js` | `frontend/src/pages/Register.jsx` | `// FR-01: User Registration` |
-| **FR-02** | `backend/src/routes/auth.js`<br>`backend/src/middleware/requireAuth.js` | `frontend/src/pages/Login.jsx`<br>`frontend/src/AuthContext.jsx` | `// FR-02: User Login & Session` |
+| **FR-02** | `backend/src/routes/auth.js`<br>`backend/src/config/passport.js`<br>`backend/src/middleware/requireAuth.js` | `frontend/src/pages/Login.jsx`<br>`frontend/src/AuthContext.jsx` | `// FR-02: User Login & Session` |
 | **FR-03** | `backend/src/routes/wardrobe.js`<br>`backend/src/visionTag.js`<br>`backend/src/mockAi.js` | `frontend/src/components/AddItemPanel.jsx` | `// FR-03: Clothing Upload & AI Tagging` |
 | **FR-04** | `backend/src/routes/recommendations.js`<br>`backend/src/mockRecommend.js`<br>`backend/src/outfitHelpers.js` | `frontend/src/pages/Recommendations.jsx`<br>`frontend/src/components/OutfitResultCard.jsx` | `// FR-04: AI Outfit Recommendation` |
 | **FR-05** | `backend/src/weather.js`<br>`backend/src/routes/weather.js` | `frontend/src/components/WeatherBanner.jsx`<br>`frontend/src/weather.js` | `// FR-05: Weather-Based Filtering` |
@@ -234,6 +239,8 @@ Every primary module includes an explicit comment header referencing its corresp
 
 ## Testing & Evaluation Notes
 
+- **Authentication & Sign-in Options (FR-01 & FR-02):**
+  - Users can create an account and sign in using email/password, or use **Continue with Google** as an alternative sign-in method (Google accounts automatically link to existing accounts with matching email addresses).
 - **Test Card Details for Stripe (FR-08):**
   - Use `4242 4242 4242 4242` with any future expiry date and 3-digit CVC to simulate a successful payment.
   - Use `4000 0000 0000 0002` to simulate a card decline.

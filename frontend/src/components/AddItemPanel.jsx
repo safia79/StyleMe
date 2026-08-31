@@ -1,4 +1,5 @@
 // FR-03: Clothing Upload & AI Tagging
+// Modal for adding a clothing photo: pick file → upload → AI tags → save.
 
 import { useState } from "react";
 import { apiRequest, imageSrc, uploadImage } from "../api.js";
@@ -7,6 +8,7 @@ import { CATEGORIES, COLOURS, STYLES, FORMALITIES, SEASONS } from "../tagOptions
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+// One labelled dropdown used for category, colour, style, and so on.
 function TagSelect({ label, name, value, options, onChange }) {
   return (
     <label className="form-field">
@@ -24,9 +26,12 @@ function TagSelect({ label, name, value, options, onChange }) {
 
 function AddItemPanel({ onClose, onSaved }) {
   const [step, setStep] = useState("pick"); // pick | uploading | analysing | review
+  // progress: 0–100 while the file is uploading (for the progress bar).
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
+  // imageUrl: path the server stored the photo under.
   const [imageUrl, setImageUrl] = useState("");
+  // tags: suggested (then editable) clothing labels.
   const [tags, setTags] = useState({
     category: "Top",
     colour: "Black",
@@ -35,8 +40,10 @@ function AddItemPanel({ onClose, onSaved }) {
     season: "All-season",
   });
   const [saving, setSaving] = useState(false);
+  // dragOver: true while a file is hovered over the drop zone (highlights it).
   const [dragOver, setDragOver] = useState(false);
 
+  // Reject anything that is not a reasonably sized JPG/PNG/WEBP.
   function validateFile(file) {
     if (!file) return "Please choose a JPG, PNG, or WEBP image.";
     const typeOk = ALLOWED_TYPES.includes(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name);
@@ -45,6 +52,7 @@ function AddItemPanel({ onClose, onSaved }) {
     return "";
   }
 
+  // Upload the photo, then jump to the review step with the suggested tags.
   async function handleFile(file) {
     const message = validateFile(file);
     if (message) {
@@ -75,6 +83,7 @@ function AddItemPanel({ onClose, onSaved }) {
     setStep("review");
   }
 
+  // Browser would otherwise open the file — we take it and upload instead.
   function handleDrop(event) {
     event.preventDefault();
     setDragOver(false);
@@ -83,9 +92,11 @@ function AddItemPanel({ onClose, onSaved }) {
   }
 
   function handleTagChange(name, value) {
+    // Keep the other tags; only replace the one dropdown that changed.
     setTags((current) => ({ ...current, [name]: value }));
   }
 
+  // POST the image path + tags to create the wardrobe item.
   async function handleSave(event) {
     event.preventDefault();
     if (saving) return;

@@ -8,6 +8,9 @@
    FR-10: profile
    FR-11: analytics
    FR-12: outfit builder */
+/* Global stylesheet for the whole frontend. Colours live in :root so pages
+   can reuse --terracotta, --espresso, --sand, and so on. This file is styles
+   only — it does not fetch data or change routes. */
 
 :root {
   --espresso: #2a1f19;

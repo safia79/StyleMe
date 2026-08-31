@@ -1,4 +1,5 @@
 // Forgot password — token is returned by the API until a real email service exists
+// Four-step flow: enter email → show token → pick a new password → success.
 
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,21 +15,25 @@ function ForgotPassword() {
   const navigate = useNavigate();
   const [step, setStep] = useState("email"); // email | token | password | done
   const [email, setEmail] = useState("");
+  // token: the reset code the API returns (shown on screen in this demo).
   const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [error, setError] = useState("");
+  // requesting / resetting: which request is in flight (disables that button).
   const [requesting, setRequesting] = useState(false);
   const [resetting, setResetting] = useState(false);
 
+  // After a successful reset, wait a moment then send them to Login.
   useEffect(() => {
     if (step !== "done") return undefined;
     const timer = setTimeout(() => navigate("/login"), 2200);
     return () => clearTimeout(timer);
   }, [step, navigate]);
 
+  // Step 1: ask the API for a reset token for this email.
   async function handleRequestToken(event) {
     event.preventDefault();
     if (requesting) return;
@@ -67,11 +72,13 @@ function ForgotPassword() {
     setError(result.data.message || "If that email is registered, a reset token has been generated.");
   }
 
+  // Step 2 → 3: they have seen the token, now they can type a new password.
   function continueToPassword() {
     setStep("password");
     setError("");
   }
 
+  // Step 3: send token + new password to the backend.
   async function handleReset(event) {
     event.preventDefault();
     if (resetting) return;
@@ -111,6 +118,7 @@ function ForgotPassword() {
       <p className="page-kicker">Account</p>
         <h1>Forgot password</h1>
 
+        {/* Only one step is visible at a time. */}
         {step === "email" ? (
           <>
             <p>Enter the email on your StyleME account to start a reset.</p>

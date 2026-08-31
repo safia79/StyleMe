@@ -15,6 +15,7 @@ const router = express.Router();
 // Stripe v17+ must be created lazily so the key is read after dotenv loads.
 let stripeClient = null;
 
+// Build (or reuse) the Stripe SDK. Throws if .env still has a placeholder key.
 function getStripe() {
   const key = (process.env.STRIPE_SECRET_KEY || "").trim();
   const looksFake = /sk_test_xxx|REPLACE_ME|your.?key|placeholder/i.test(key) || key.length < 20;
@@ -40,6 +41,7 @@ const CURRENCY = "aud";
 const PAYMENT_SETUP_UNAVAILABLE =
   "Payment setup is temporarily unavailable — please try again later";
 
+// Move a date forward one month or one year for the subscription expiry.
 function addBillingPeriod(date, billingCycle) {
   const result = new Date(date);
   if (billingCycle === "annual") {
@@ -50,6 +52,7 @@ function addBillingPeriod(date, billingCycle) {
   return result;
 }
 
+// Latest subscription row for this user (by expiry date).
 async function getSubscriptionForUser(userId) {
   return prisma.subscription.findFirst({
     where: { userId },
@@ -58,6 +61,7 @@ async function getSubscriptionForUser(userId) {
 }
 
 async function setUserPremium(userId) {
+  // Flip the account flag used by Style Me and other premium checks.
   await prisma.user.update({
     where: { id: userId },
     data: { accountType: "premium" },
@@ -65,12 +69,14 @@ async function setUserPremium(userId) {
 }
 
 async function setUserFree(userId) {
+  // Used after cancel so Style Me and other premium gates lock again.
   await prisma.user.update({
     where: { id: userId },
     data: { accountType: "free" },
   });
 }
 
+// Update the latest row if one exists, otherwise insert (one plan per user).
 async function upsertSubscription(userId, { customerRef, expiryDate, planStatus }) {
   const existing = await prisma.subscription.findFirst({
     where: { userId },
@@ -120,6 +126,7 @@ router.post("/create-payment-intent", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("Stripe create-payment-intent error:", err.type || err.code, err.message);
     const status = err.code === "STRIPE_NOT_CONFIGURED" ? 503 : 500;
+    // Never send err.message — it can include the secret key when Stripe is misconfigured.
     res.status(status).json({
       error: PAYMENT_SETUP_UNAVAILABLE,
     });
@@ -136,6 +143,7 @@ router.post("/confirm", requireAuth, async (req, res) => {
   try {
     const paymentIntent = await getStripe().paymentIntents.retrieve(paymentIntentId);
 
+    // Do not credit premium if this PaymentIntent was created for another user.
     if (paymentIntent.metadata.userId !== String(req.session.userId)) {
       return res.status(403).json({ error: "This payment does not belong to your account." });
     }
@@ -192,7 +200,7 @@ router.post("/start-trial", requireAuth, async (req, res) => {
     }
 
     const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 5);
+    expiryDate.setDate(expiryDate.getDate() + 5); // 5-day trial, then they need to pay
 
     await setUserPremium(req.session.userId);
     // customerRef is required on the existing table; use "" because trials never touch Stripe.

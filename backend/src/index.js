@@ -10,8 +10,13 @@
 // FR-05: Weather-Based Filtering (Open-Meteo via /api/weather)
 // FR-11: Wardrobe Analytics
 // FR-12: Manual Outfit Builder
+//
+// This is the Express app entry point: load env vars, create the server,
+// attach middleware (CORS, JSON, sessions, Passport), then mount each
+// /api/... router. The React frontend talks to this process.
 
 const path = require("path");
+// Load backend/.env before other code reads process.env (keys, DATABASE_URL).
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 const fs = require("fs");
@@ -31,12 +36,14 @@ const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+// Only these browser origins may send cookies here. Vite may use 5173 or 5174.
 const FRONTEND_ORIGINS = [
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
   "http://localhost:5173",
   "http://localhost:5174",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
+  // Drop duplicates if FRONTEND_URL is already one of the localhost URLs.
 ].filter((origin, index, list) => list.indexOf(origin) === index);
 
 // Make sure the uploads folder exists even on a fresh clone
@@ -50,15 +57,17 @@ if (!fs.existsSync(uploadsDir)) {
 app.use(
   cors({
     origin(origin, callback) {
+      // No Origin header = same-origin request, curl, or a server-side call.
       if (!origin || FRONTEND_ORIGINS.includes(origin)) {
         return callback(null, true);
       }
       return callback(new Error("Not allowed by CORS"));
     },
-    credentials: true,
+    credentials: true, // allow the session cookie to cross ports
   }),
 );
 
+// Turn JSON request bodies into req.body objects.
 app.use(express.json());
 
 // express-session stores login state in a cookie.
@@ -77,6 +86,7 @@ app.use(
   }),
 );
 
+// Passport must run after express-session so it can read/write the session.
 require("./config/passport");
 app.use(passport.initialize());
 app.use(passport.session());
@@ -92,6 +102,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// Each router only sees the path after this prefix (e.g. /login on auth).
 app.use("/api/auth", authRoutes);
 app.use("/api/wardrobe", wardrobeRoutes);
 app.use("/api/outfits", outfitRoutes);
@@ -102,6 +113,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/weather", weatherRoutes);
 app.use("/api/notifications", notificationRoutes);
 
+// Start listening so the frontend (and /api/health) can reach us.
 app.listen(PORT, () => {
   console.log(`StyleME backend listening on http://localhost:${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);

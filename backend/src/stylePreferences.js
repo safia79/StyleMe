@@ -5,6 +5,7 @@
 const fs = require("fs");
 const path = require("path");
 
+// JSON file lives next to the backend folder, not in the database.
 const FILE_PATH = path.join(__dirname, "..", "data", "stylePreferences.json");
 
 const STYLE_PREFERENCES = [
@@ -16,6 +17,7 @@ const STYLE_PREFERENCES = [
   "Streetwear",
 ];
 
+// Read the whole file. Missing/broken file → empty object so first save still works.
 function readAll() {
   try {
     return JSON.parse(fs.readFileSync(FILE_PATH, "utf8"));
@@ -24,13 +26,16 @@ function readAll() {
   }
 }
 
+// Preferences saved for this user, minus any values that are no longer allowed.
 function getStylePreferences(userId) {
   const all = readAll();
   const saved = all[String(userId)];
   return Array.isArray(saved) ? saved.filter((value) => STYLE_PREFERENCES.includes(value)) : [];
 }
 
+// Keep only allowed unique values, write the file, and return what we stored.
 function saveStylePreferences(userId, values) {
+  // Set removes duplicates; filter drops anything not in STYLE_PREFERENCES.
   const cleaned = [
     ...new Set((Array.isArray(values) ? values : []).filter((value) => STYLE_PREFERENCES.includes(value))),
   ];

@@ -3,6 +3,7 @@
 // renders a hosted iframe for the card fields; the browser talks to Stripe
 // directly, and only the resulting PaymentIntent id (a success token) is
 // ever sent to our backend in handleCheckoutSuccess/CheckoutForm below.
+// Pricing page: free vs premium, trial, Stripe checkout, or cancel.
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -14,6 +15,7 @@ import { ButtonSpinner } from "../components/StatusPanel.jsx";
 import UiIcon from "../components/UiIcons.jsx";
 import { useToast } from "../ToastContext.jsx";
 
+// Public Stripe key from .env — safe to show in the browser (not the secret key).
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
@@ -40,6 +42,7 @@ const PREMIUM_UNLOCKED = [
 const PAYMENT_SETUP_UNAVAILABLE =
   "Payment setup is temporarily unavailable — please try again later";
 
+// Hide raw Stripe key errors from the user; show a friendly fallback instead.
 function publicPaymentError(message, fallback = PAYMENT_SETUP_UNAVAILABLE) {
   const text = typeof message === "string" ? message : "";
   if (!text || /sk_(test|live)_|pk_(test|live)_|Expired API Key|Invalid API Key/i.test(text)) {
@@ -66,11 +69,13 @@ const CARD_ELEMENT_OPTIONS = {
   },
 };
 
+// Turn an ISO date string into a short local date for "Expires …".
 function formatDate(value) {
   if (!value) return "";
   return new Date(value).toLocaleDateString();
 }
 
+// Card form rendered inside Stripe's <Elements> wrapper.
 function CheckoutForm({ billingCycle, clientSecret, onSuccess, onCancel }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -79,6 +84,7 @@ function CheckoutForm({ billingCycle, clientSecret, onSuccess, onCancel }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // Stripe charges the card, then we tell our API the paymentIntent id.
   async function handlePay(event) {
     event.preventDefault();
     if (!stripe || !elements || submitting) return;
@@ -167,8 +173,10 @@ function CheckoutForm({ billingCycle, clientSecret, onSuccess, onCancel }) {
 function Subscription() {
   const { user, refreshUser } = useAuth();
   const { showToast } = useToast();
+  // subscription: plan status + expiry from GET /api/subscription/status.
   const [subscription, setSubscription] = useState(null);
   const [billingCycle, setBillingCycle] = useState("monthly");
+  // checkout: { clientSecret } once we are ready to show the card form.
   const [checkout, setCheckout] = useState(null);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState("");
@@ -179,6 +187,7 @@ function Subscription() {
 
   const isPremium = user?.accountType === "premium";
 
+  // Reload status after premium flips (for example after a successful pay).
   useEffect(() => {
     let cancelled = false;
 
@@ -194,6 +203,7 @@ function Subscription() {
     };
   }, [isPremium]);
 
+  // Ask our backend for a Stripe PaymentIntent, then show CheckoutForm.
   async function handleStartCheckout() {
     setStartError("");
     setTrialError("");
@@ -218,12 +228,14 @@ function Subscription() {
     setCheckout({ clientSecret: result.data.clientSecret });
   }
 
+  // Payment worked — refresh the logged-in user so the navbar shows premium.
   async function handleCheckoutSuccess(updatedSubscription) {
     await refreshUser();
     setSubscription(updatedSubscription || null);
     setCheckout(null);
   }
 
+  // Start the 5-day trial with no card, then refresh the user.
   async function handleStartTrial() {
     setTrialError("");
     setStartError("");
@@ -241,6 +253,7 @@ function Subscription() {
     setSubscription(result.data.subscription || null);
   }
 
+  // Browser confirm() first — then POST cancel and refresh the user.
   async function handleCancel() {
     const confirmed = window.confirm(
       "Cancel your Premium subscription? You'll lose access to premium features immediately.",

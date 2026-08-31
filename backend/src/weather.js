@@ -4,6 +4,7 @@
 
 const dns = require("dns");
 
+// Prefer IPv4 so geocoding does not stall on IPv6-only DNS answers.
 dns.setDefaultResultOrder("ipv4first");
 
 const GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search";
@@ -12,8 +13,10 @@ const TIMEOUT_MS = 8000;
 const CACHE_TTL_MS = 30 * 60 * 1000; // R02: 30 minutes per city
 
 const weatherCache = new Map(); // cityKey -> { weather, expiresAt }
+// If two requests ask for the same city at once, they share one fetch.
 const inflight = new Map(); // cityKey -> Promise
 
+// Open-Meteo weather_code numbers → short labels we show in the app.
 const WEATHER_LABELS = {
   0: "Clear",
   1: "Mostly clear",
@@ -38,6 +41,7 @@ const WEATHER_LABELS = {
   99: "Thunderstorm",
 };
 
+// Map a numeric weather code to a label. Unknown codes fall back by range.
 function weatherLabel(code) {
   if (WEATHER_LABELS[code]) return WEATHER_LABELS[code];
   if (code >= 50 && code < 60) return "Drizzle";
@@ -48,16 +52,19 @@ function weatherLabel(code) {
   return "Mixed conditions";
 }
 
+// fetch() with an abort timer so a hung API does not block the request forever.
 function fetchWithTimeout(url) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
+// Same city name with different capitalisation still hits the same cache entry.
 function cacheKey(city) {
   return city.trim().toLowerCase();
 }
 
+// Talk to Open-Meteo: city name → lat/lng, then current temperature + code.
 async function fetchCityWeatherUncached(trimmed) {
   const geoUrl = `${GEOCODE_URL}?name=${encodeURIComponent(trimmed)}&count=1&language=en&format=json`;
   console.log("Open-Meteo geocode:", geoUrl);
@@ -101,6 +108,7 @@ async function fetchCityWeatherUncached(trimmed) {
   };
 }
 
+// Public helper: cached weather for a city, or null if we cannot look it up.
 async function fetchCityWeather(city) {
   const trimmed = typeof city === "string" ? city.trim() : "";
   if (!trimmed) {
@@ -114,6 +122,7 @@ async function fetchCityWeather(city) {
     return cached.weather;
   }
 
+  // Reuse the in-progress request instead of hitting Open-Meteo twice.
   if (inflight.has(key)) {
     return inflight.get(key);
   }

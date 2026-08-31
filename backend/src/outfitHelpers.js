@@ -2,6 +2,7 @@
 // FR-06: Style Me (Generative AI Prompt)
 // Shared helpers for mock outfit picking. Keep this simple and readable.
 
+// Fisher–Yates shuffle so each generate does not always pick the same items.
 function shuffle(list) {
   const copy = [...list];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -11,10 +12,12 @@ function shuffle(list) {
   return copy;
 }
 
+// How many different clothing categories are in this list (Top, Bottom, …).
 function distinctCategories(items) {
   return new Set(items.map((item) => item.category)).size;
 }
 
+// Short sentence explaining why these pieces were grouped together.
 function buildRationale(items, occasionLabel) {
   const first = items[0];
   const second = items[1];
@@ -45,6 +48,7 @@ function pickDistinctCategoryItems(
     byCategory[item.category].push(item);
   }
 
+  // Soft prefs: if nothing matches formality/style/season, keep the full pool.
   function bestFrom(category) {
     const pool = byCategory[category];
     if (!pool || pool.length === 0) return null;
@@ -69,6 +73,7 @@ function pickDistinctCategoryItems(
     return ranked[0];
   }
 
+  // Sometimes start with a dress instead of top+bottom, for variety.
   const dressFirst = Boolean(byCategory.Dress) && Math.random() < 0.45;
   const order = dressFirst
     ? ["Dress", "Shoes", "Outerwear", "Accessory", "Top", "Bottom"]
@@ -86,6 +91,7 @@ function pickDistinctCategoryItems(
     if (picked.length >= 4) break;
   }
 
+  // If the preferred order did not yield 2 items, grab any leftover categories.
   if (picked.length < 2) {
     for (const item of shuffle(items)) {
       if (used.has(item.category)) continue;
@@ -98,6 +104,7 @@ function pickDistinctCategoryItems(
   return picked.length >= 2 ? picked : null;
 }
 
+// First item in the pool, preferring a matching season when one exists.
 function pickByPrefs(pool, preferredSeasons) {
   if (!pool || pool.length === 0) return null;
   let ranked = pool;
@@ -108,6 +115,7 @@ function pickByPrefs(pool, preferredSeasons) {
   return ranked[0];
 }
 
+// Group items by category (after shuffle so ties are not always the same item).
 function groupByCategory(items) {
   const byCategory = {};
   for (const item of shuffle(items)) {
@@ -122,6 +130,7 @@ function groupByCategory(items) {
 function pickStructuredOutfit(items, preferredSeasons) {
   const byCategory = groupByCategory(items);
 
+  // Optional extras only — never used as the "second item" instead of a bottom.
   function addExtras(picked, used) {
     for (const category of ["Shoes", "Outerwear", "Accessory"]) {
       if (picked.length >= 4) break;
@@ -153,6 +162,7 @@ function pickStructuredOutfit(items, preferredSeasons) {
   return null;
 }
 
+// True if we have a Dress, or both a Top and a Bottom — enough for a full look.
 function canBuildStructuredOutfit(items) {
   const categories = new Set(items.map((item) => item.category));
   if (categories.has("Dress")) return true;

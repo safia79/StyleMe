@@ -10,6 +10,7 @@ const router = express.Router();
 // processStyleMeRequest also returns AUTH_REQUIRED if userId is missing.
 router.use(requireAuth);
 
+// Map the algorithm's error codes to HTTP statuses the frontend already handles.
 const STATUS_BY_CODE = {
   AUTH_REQUIRED: 401,
   PREMIUM_REQUIRED: 403,

@@ -1,6 +1,7 @@
 // FR-01: User Registration
 // FR-02: User Login & Session
 // Forgot password / reset password (dev token in API response until email exists)
+// All /api/auth routes: register, login, session check, password reset, Google OAuth.
 
 const express = require("express");
 const bcrypt = require("bcrypt");
@@ -12,6 +13,7 @@ const router = express.Router();
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
+// 10 bcrypt rounds is slow enough to make guessing passwords expensive.
 const BCRYPT_ROUNDS = 10;
 
 // Fields we are allowed to send back to the browser (never passwordHash)
@@ -24,8 +26,10 @@ const publicUserSelect = {
   createdAt: true,
 };
 
+// Clean and check register form fields. Returns { error } or the cleaned values.
 function validateRegisterInput(body) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
+  // Always store email in lowercase so "Pat@x.com" and "pat@x.com" are the same.
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
   const city = typeof body.city === "string" ? body.city.trim() : "";
@@ -49,6 +53,7 @@ function validateRegisterInput(body) {
   return { name, email, password, city };
 }
 
+// Same generic error for any bad login input so we do not leak "email exists".
 function validateLoginInput(body) {
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
@@ -126,6 +131,7 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    // bcrypt.compare checks the typed password against the stored hash.
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatches) {
       return res.status(401).json({
@@ -133,6 +139,7 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    // Stamp lastLoginAt only after the password is confirmed.
     const loggedInUser = await prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
@@ -160,6 +167,7 @@ router.get("/me", async (req, res) => {
       select: publicUserSelect,
     });
 
+    // Session points at a deleted user — clear the cookie so they are not stuck.
     if (!user) {
       req.session.destroy(() => {});
       return res.json({ user: null });
@@ -181,6 +189,8 @@ router.post("/forgot-password", async (req, res) => {
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
+    // Same message whether the email exists, so this route cannot be used to
+    // discover which emails have accounts.
     const payload = {
       message: "If that email is registered, a reset token has been generated.",
     };
@@ -199,6 +209,7 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
+// Exchange a one-time token for a new password hash.
 router.post("/reset-password", async (req, res) => {
   try {
     const token = typeof req.body.token === "string" ? req.body.token.trim() : "";
@@ -225,6 +236,7 @@ router.post("/reset-password", async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    // updateMany so a missing user id does not throw (count === 0 below).
     const updated = await prisma.user.updateMany({
       where: { id: userId },
       data: { passwordHash },
@@ -253,22 +265,25 @@ router.post("/logout", (req, res) => {
       return res.status(500).json({ error: "Could not sign out. Please try again." });
     }
 
-    res.clearCookie("connect.sid");
+    res.clearCookie("connect.sid"); // express-session's default cookie name
     return res.json({ message: "Signed out" });
   });
 });
 
+// Start Google OAuth: browser is sent to Google to pick an account.
 router.get(
   "/google",
   passport.authenticate("google", { scope: ["profile", "email"] }),
 );
 
+// Google redirects here after the user agrees. Failure → frontend /login.
 router.get(
   "/google/callback",
   passport.authenticate("google", {
     failureRedirect: process.env.FRONTEND_URL + "/login",
   }),
   (req, res) => {
+    // Match email/password login so requireAuth and /me see this user.
     req.session.userId = req.user.id;
     res.redirect(process.env.FRONTEND_URL + "/dashboard");
   },

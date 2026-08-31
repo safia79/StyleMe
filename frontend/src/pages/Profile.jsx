@@ -1,4 +1,5 @@
 // FR-10: Profile & Preferences
+// Edit name, city, and style checkboxes. Email is shown but cannot be changed.
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext.jsx";
@@ -13,6 +14,7 @@ function Profile() {
   const { showToast } = useToast();
   const [name, setName] = useState(user?.name || "");
   const [city, setCity] = useState(user?.city || "");
+  // stylePreferences: list of selected style labels from the checkboxes.
   const [stylePreferences, setStylePreferences] = useState([]);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
@@ -20,6 +22,7 @@ function Profile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Load the saved profile once so the form starts with server values.
   useEffect(() => {
     let cancelled = false;
 
@@ -43,12 +46,14 @@ function Profile() {
     };
   }, []);
 
+  // Hide the green success banner after a few seconds.
   useEffect(() => {
     if (!success) return undefined;
     const timer = setTimeout(() => setSuccess(""), 4000);
     return () => clearTimeout(timer);
   }, [success]);
 
+  // Add the style if it is off, or remove it if it is already on.
   function togglePreference(option) {
     setStylePreferences((current) =>
       current.includes(option) ? current.filter((value) => value !== option) : [...current, option],
@@ -57,6 +62,7 @@ function Profile() {
     setError("");
   }
 
+  // PATCH the profile, then refresh AuthContext so the navbar name updates.
   async function handleSave(event) {
     event.preventDefault();
     setError("");

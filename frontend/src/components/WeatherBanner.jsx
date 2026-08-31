@@ -1,10 +1,13 @@
 // FR-05: Weather-Based Filtering
 // FR-04: exposes temperature to Recommendations via onWeatherChange
+// Loads the forecast for the user's city and shows a small banner.
+// Recommendations also listen via onWeatherChange so they can filter outfits.
 
 import { useEffect, useState } from "react";
 import { fetchCityWeather } from "../weather.js";
 import UiIcon from "./UiIcons.jsx";
 
+// Pick which icon to draw from words like "rain" or "clear" in the forecast.
 function weatherIconName(conditions) {
   const text = String(conditions || "").toLowerCase();
   if (text.includes("snow") || text.includes("icy")) return "snow";
@@ -16,8 +19,11 @@ function weatherIconName(conditions) {
 
 function WeatherBanner({ city, onWeatherChange }) {
   const [status, setStatus] = useState(city && city.trim() ? "loading" : "unavailable"); // loading | ok | unavailable
+  // weather: the latest forecast object from the API, or null if we have none.
   const [weather, setWeather] = useState(null);
 
+  // Reload whenever the city changes. "cancelled" ignores a stale response
+  // if the user navigates away or the city updates mid-request.
   useEffect(() => {
     let cancelled = false;
 
@@ -54,6 +60,7 @@ function WeatherBanner({ city, onWeatherChange }) {
     };
   }, [city]);
 
+  // Three possible UIs: still fetching, failed / no city, or success.
   if (status === "loading") {
     return <div className="weather-banner weather-banner-muted">Checking the weather...</div>;
   }

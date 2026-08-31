@@ -1,6 +1,9 @@
+// Shared split-screen layout for Login, Register, and Forgot Password.
+// Left: the white form card (children). Right: decorative art panel.
 import BrandMark from "./BrandMark.jsx";
 import UiIcon from "./UiIcons.jsx";
 
+// Feature chips shown under each auth form.
 const HIGHLIGHTS = [
   { icon: "wardrobe", label: "Wardrobe" },
   { icon: "sparkle", label: "AI outfits" },
@@ -8,6 +11,7 @@ const HIGHLIGHTS = [
   { icon: "shield", label: "Privacy" },
 ];
 
+// Row of small icons (Wardrobe, AI outfits, …) at the bottom of the card.
 export function AuthHighlights() {
   return (
     <ul className="auth-features">
@@ -23,6 +27,7 @@ export function AuthHighlights() {
   );
 }
 
+// children = the page-specific form (headings, inputs, buttons).
 function AuthShell({ children }) {
   return (
     <main className="auth-shell">

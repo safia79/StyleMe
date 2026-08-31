@@ -6,10 +6,13 @@ const crypto = require("crypto");
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const tokensByValue = new Map(); // token -> { userId, expiresAt }
 
+// 32 random bytes as hex = 64 characters, hard to guess.
 function generateToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+// Issue a new token for this user and throw away any older unused ones
+// so only the latest "forgot password" click works.
 function createResetToken(userId) {
   for (const [token, row] of tokensByValue) {
     if (row.userId === userId) {
@@ -22,6 +25,8 @@ function createResetToken(userId) {
   return token;
 }
 
+// One-time use: remove the token first, then reject it if it had expired.
+// Returns the user id, or null if the token is missing/invalid/expired.
 function consumeResetToken(token) {
   if (typeof token !== "string" || !token) {
     return null;

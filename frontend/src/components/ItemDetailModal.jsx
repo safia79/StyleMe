@@ -1,6 +1,7 @@
 // FR-03: Clothing Upload & AI Tagging
 // FR-07: Wardrobe Dashboard (edit / favourite / delete)
 // FR-09: Outfit History — Times worn (wearCount)
+// Popup for one wardrobe item: view tags, edit them, favourite, or delete.
 
 import { useState } from "react";
 import { apiRequest, imageSrc } from "../api.js";
@@ -25,7 +26,9 @@ function TagSelect({ label, name, value, options, onChange }) {
 }
 
 function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
+  // editing: show the dropdown form instead of the read-only details.
   const [editing, setEditing] = useState(false);
+  // confirmingDelete: show the "are you sure?" dialog on top of this modal.
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [tags, setTags] = useState({
     category: item.category,
@@ -35,12 +38,14 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
     season: item.season,
   });
   const [error, setError] = useState("");
+  // busy: any save / favourite / delete request is running.
   const [busy, setBusy] = useState(false);
 
   function handleTagChange(name, value) {
     setTags((current) => ({ ...current, [name]: value }));
   }
 
+  // PATCH the tags, then tell Wardrobe to update that card in the grid.
   async function handleSave(event) {
     event.preventDefault();
     if (busy) return;
@@ -63,6 +68,7 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
     setEditing(false);
   }
 
+  // Toggle favourite on the server, then refresh the parent list.
   async function handleFavourite() {
     if (busy) return;
     setBusy(true);
@@ -85,6 +91,7 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
     );
   }
 
+  // DELETE the item. On failure we keep the modal open and show the error.
   async function handleDelete() {
     if (busy) return;
     setBusy(true);
@@ -114,6 +121,7 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
 
         <img className="preview-image" src={imageSrc(item.imageUrl)} alt={`${item.colour} ${item.category}`} />
 
+        {/* Edit form vs read-only details — same photo stays above. */}
         {editing ? (
           <form className="form" onSubmit={handleSave}>
             <div className="form-grid">

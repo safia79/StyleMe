@@ -1,4 +1,5 @@
 // FR-09: Outfit History
+// Saved looks: rename, mark as worn today, or delete (items stay in the closet).
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -12,11 +13,15 @@ function OutfitHistory() {
   const [outfits, setOutfits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // editingId + draftName: which card is being renamed, and the typed name.
   const [editingId, setEditingId] = useState(null);
   const [draftName, setDraftName] = useState("");
+  // busyId: which outfit's Wear/Delete request is running.
   const [busyId, setBusyId] = useState(null);
+  // pendingDelete: outfit waiting for the confirm dialog (or null).
   const [pendingDelete, setPendingDelete] = useState(null);
 
+  // Load saved outfits once. Ignore the reply if we already left the page.
   useEffect(() => {
     let cancelled = false;
 
@@ -37,11 +42,13 @@ function OutfitHistory() {
     };
   }, []);
 
+  // Click the title to turn it into an input.
   function startRename(outfit) {
     setEditingId(outfit.id);
     setDraftName(outfit.name);
   }
 
+  // PATCH just the name, then replace that row in the list.
   async function saveRename(outfitId) {
     const name = draftName.trim();
     if (!name) {
@@ -70,6 +77,7 @@ function OutfitHistory() {
     showToast("Outfit renamed.");
   }
 
+  // Enter saves, Escape cancels — same idea as renaming a file.
   function handleRenameKey(event, outfitId) {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -80,6 +88,7 @@ function OutfitHistory() {
     }
   }
 
+  // Mark this look as worn. Also bump wearCount on those pieces in other cards.
   async function handleWear(outfitId) {
     if (busyId) return;
     setBusyId(outfitId);
@@ -109,6 +118,7 @@ function OutfitHistory() {
     showToast("Marked as worn today.");
   }
 
+  // After the user confirms, DELETE that outfit (wardrobe items are kept).
   async function confirmDelete() {
     if (!pendingDelete || busyId) return;
     const outfit = pendingDelete;

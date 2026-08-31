@@ -1,4 +1,5 @@
 // FR-11: Wardrobe Analytics
+// Charts built from wardrobe items: categories, colours, and most-worn pieces.
 
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -18,6 +19,7 @@ import {
 import { apiRequest } from "../api.js";
 import { EmptyState, LoadingState } from "../components/StatusPanel.jsx";
 
+// Map tag names like "Navy" to a hex colour so the bar chart looks right.
 const COLOUR_HEX = {
   Black: "#1a1a1a",
   White: "#d9d4cc",
@@ -36,6 +38,7 @@ const COLOUR_HEX = {
 
 const CATEGORY_COLOURS = ["#8C3A1E", "#2A1F19", "#6B5344", "#A65D3A", "#5C534C", "#8F5A3A"];
 
+// Count how many items share the same value (for example the same category).
 function countBy(items, key) {
   const totals = {};
   items.forEach((item) => {
@@ -52,6 +55,7 @@ function Analytics() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Same wardrobe list as the Wardrobe page — we just chart it here.
   useEffect(() => {
     let cancelled = false;
 
@@ -72,6 +76,7 @@ function Analytics() {
     };
   }, []);
 
+  // Recalculate chart data only when the item list changes.
   const categoryData = useMemo(() => countBy(items, "category"), [items]);
   const colourData = useMemo(() => countBy(items, "colour"), [items]);
   const mostWorn = useMemo(
@@ -103,6 +108,7 @@ function Analytics() {
         </p>
       ) : null}
 
+      {/* Empty vs "need 3 items" vs the real charts. */}
       {!loading && items.length === 0 ? (
         <EmptyState
           title="Nothing to chart yet"

@@ -1,4 +1,6 @@
 // FR-02: User Login & Session
+// Email/password sign-in page. Also offers "Continue with Google", which
+// leaves this React app and goes to the backend OAuth URL.
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -8,23 +10,29 @@ import AuthShell, { AuthHighlights } from "../components/AuthShell.jsx";
 import { ButtonSpinner } from "../components/StatusPanel.jsx";
 import UiIcon from "../components/UiIcons.jsx";
 
+// Simple check: something@something.something
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // values: what the user typed. fieldErrors: per-input messages.
   const [values, setValues] = useState({ email: "", password: "" });
   const [fieldErrors, setFieldErrors] = useState({});
+  // error: message from the server (wrong password, network, …).
   const [error, setError] = useState("");
+  // submitting: true while login() is running so we do not send twice.
   const [submitting, setSubmitting] = useState(false);
 
+  // Update one field and clear its error (and the server error).
   function handleChange(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
     setError("");
     setFieldErrors((current) => ({ ...current, [field]: "" }));
   }
 
+  // Check the form on the client first, then call AuthContext.login.
   async function handleSubmit(event) {
     event.preventDefault(); // stay on this page — no full reload
     if (submitting) return;
@@ -112,6 +120,7 @@ function Login() {
         </form>
 
         <p className="auth-or">or</p>
+        {/* Real page navigation — OAuth cannot use fetch() or React Router. */}
         <a className="btn btn-secondary" href={`${API_BASE}/api/auth/google`}>
           Continue with Google
         </a>

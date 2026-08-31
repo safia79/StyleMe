@@ -1,3 +1,5 @@
+// Small hanger-in-a-square logo used in the navbar and on auth cards.
+// size: pixel width/height. Decorative only (hidden from screen readers).
 function BrandMark({ size = 28 }) {
   return (
     <svg

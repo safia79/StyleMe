@@ -1,4 +1,5 @@
 // FR-06: Style Me (Generative AI Prompt)
+// Premium page: type a look in your own words and get one styled outfit.
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -20,11 +21,14 @@ function StyleMe() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // showUpgrade: free users see the "go to Subscription" panel instead of a look.
   const [showUpgrade, setShowUpgrade] = useState(false);
+  // stats: how many items / categories are in the wardrobe (sidebar).
   const [stats, setStats] = useState({ count: 0, categories: 0 });
 
   const isPremium = user?.accountType === "premium";
 
+  // Count wardrobe pieces so the sidebar can show a quick snapshot.
   useEffect(() => {
     let cancelled = false;
 
@@ -42,6 +46,7 @@ function StyleMe() {
     };
   }, []);
 
+  // Free accounts stop here with the upgrade prompt. Premium calls the API.
   async function handleSubmit(event) {
     event.preventDefault();
     if (loading) return;
@@ -79,6 +84,7 @@ function StyleMe() {
     setOutfit(result.data.outfit);
   }
 
+  // Save the generated look to Outfit History (same API as Recommendations).
   async function handleSave() {
     if (!outfit || saving) return;
     setSaving(true);

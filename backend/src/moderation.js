@@ -1,6 +1,7 @@
 // Content moderation for Style Me prompts (Algorithm 3, step 5).
 // Runs before Claude is called. Rejects prompts we cannot safely process.
 
+// If any of these match, we refuse the Style Me prompt (no model call).
 const BLOCKED_PATTERNS = [
   /\b(suicide|self[- ]?harm|kill myself)\b/i,
   /\b(child|minor|underage).{0,40}\b(sexual|nude|porn)\b/i,
@@ -14,7 +15,7 @@ const BLOCKED_PATTERNS = [
  * @returns {{ allowed: boolean, reason?: string }}
  */
 function moderatePrompt(prompt) {
-  const text = String(prompt || "");
+  const text = String(prompt || ""); // treat missing prompt as empty string
 
   for (const pattern of BLOCKED_PATTERNS) {
     if (pattern.test(text)) {

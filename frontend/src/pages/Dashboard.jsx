@@ -4,6 +4,7 @@
 // FR-10: Profile & Preferences
 // FR-11: Wardrobe Analytics
 // FR-12: Manual Outfit Builder
+// Home screen after login: greeting, weather, shortcut cards, recent outfits.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
@@ -11,6 +12,8 @@ import { apiRequest, imageSrc } from "../api.js";
 import WeatherBanner from "../components/WeatherBanner.jsx";
 import UiIcon from "../components/UiIcons.jsx";
 
+// One card per main feature. descriptionKey lets subscription text change
+// depending on whether the user is already premium.
 const SHORTCUTS = [
   {
     to: "/wardrobe",
@@ -72,8 +75,10 @@ const SHORTCUTS = [
 
 function Dashboard() {
   const { user } = useAuth();
+  // Up to three newest saved outfits (hidden entirely if the list is empty).
   const [recentOutfits, setRecentOutfits] = useState([]);
 
+  // Load outfit history once. Ignore the result if we already left the page.
   useEffect(() => {
     let cancelled = false;
 
@@ -121,6 +126,7 @@ function Dashboard() {
             </span>
             <strong>{item.title}</strong>
             <span>
+              {/* Subscription card wording depends on account type. */}
               {item.descriptionKey === "subscription"
                 ? user?.accountType === "premium"
                   ? "You are premium"
@@ -135,6 +141,7 @@ function Dashboard() {
         ))}
       </div>
 
+      {/* Only show this section when the user has saved at least one look. */}
       {recentOutfits.length > 0 ? (
         <section className="section-block">
           <div className="section-heading">

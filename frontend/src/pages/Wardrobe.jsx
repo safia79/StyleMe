@@ -1,5 +1,6 @@
 // FR-03: Clothing Upload & AI Tagging (Add Item)
 // FR-07: Wardrobe Dashboard (grid, search, filters, edit/favourite/delete)
+// Closet grid: search/filter items, add a photo, open details, heart a piece.
 
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest, imageSrc } from "../api.js";
@@ -15,14 +16,18 @@ function Wardrobe() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // search + dropdowns: only used to filter the grid, not sent to the API.
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [colour, setColour] = useState("");
   const [season, setSeason] = useState("");
+  // showAdd / selected: which modal is open (add panel vs item details).
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState(null);
+  // favouritingId: which heart is spinning so we do not toggle two at once.
   const [favouritingId, setFavouritingId] = useState(null);
 
+  // Load the full wardrobe once when this page opens.
   useEffect(() => {
     let cancelled = false;
 
@@ -44,6 +49,7 @@ function Wardrobe() {
     };
   }, []);
 
+  // Recalculate the filtered list only when items or filters change.
   const visibleItems = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -60,28 +66,33 @@ function Wardrobe() {
     });
   }, [items, search, category, colour, season]);
 
+  // Replace one item in the list (and in the open modal, if it is that item).
   function applyItem(updated) {
     setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
     setSelected((current) => (current && current.id === updated.id ? updated : current));
   }
 
+  // Add Item just succeeded — put the new piece at the front of the grid.
   function handleSaved(item) {
     setItems((current) => [item, ...current]);
     setShowAdd(false);
     showToast("Item saved to your wardrobe.");
   }
 
+  // Edit or favourite from the modal — keep the grid in sync.
   function handleUpdated(updated, message) {
     applyItem(updated);
     if (message) showToast(message);
   }
 
   function handleDeleted(id) {
+    // Remove that card and close the modal.
     setItems((current) => current.filter((item) => item.id !== id));
     setSelected(null);
     showToast("Item deleted from your wardrobe.");
   }
 
+  // Flip the heart immediately, then ask the server. If it fails, undo.
   async function handleFavouriteClick(item) {
     if (favouritingId) return;
 
@@ -212,6 +223,7 @@ function Wardrobe() {
         </div>
       ) : null}
 
+      {/* Modals only mount when needed so they do not sit hidden in the DOM. */}
       {showAdd ? <AddItemPanel onClose={() => setShowAdd(false)} onSaved={handleSaved} /> : null}
       {selected ? (
         <ItemDetailModal

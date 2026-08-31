@@ -1,6 +1,7 @@
 // FR-01: User Registration
 // FR-02: User Login & Session
 // If the user is already signed in, Register/Login should go to the Dashboard.
+// Opposite of ProtectedRoute: these pages are for guests only.
 
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
@@ -17,6 +18,7 @@ function PublicOnlyRoute() {
     );
   }
 
+  // Already signed in — no need to see Login/Register again.
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }

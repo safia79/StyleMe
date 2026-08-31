@@ -1,4 +1,5 @@
 // FR-12: Manual Outfit Builder
+// Build a look by hand: fill slots from the wardrobe, name it, then save.
 
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -6,6 +7,7 @@ import { apiRequest, imageSrc } from "../api.js";
 import { ButtonSpinner, EmptyState, LoadingState } from "../components/StatusPanel.jsx";
 import { useToast } from "../ToastContext.jsx";
 
+// Each slot only accepts certain categories (for example Bottom → pants).
 const SLOTS = [
   { key: "top", label: "Top", categories: ["Top", "Dress"] },
   { key: "bottom", label: "Bottom", categories: ["Bottom"] },
@@ -20,9 +22,11 @@ const OCCASIONS = ["Casual", "Work", "Formal", "Date Night", "Weekend"];
 function OutfitBuilder() {
   const { showToast } = useToast();
   const [items, setItems] = useState([]);
+  // slots: { top: item, shoes: item, ... } — empty object means nothing chosen.
   const [slots, setSlots] = useState({});
   const [name, setName] = useState("");
   const [occasionTag, setOccasionTag] = useState("Casual");
+  // pickerKey: which slot's "choose item" modal is open.
   const [pickerKey, setPickerKey] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -30,6 +34,7 @@ function OutfitBuilder() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState("");
 
+  // Load every wardrobe item so the slot picker has something to show.
   useEffect(() => {
     let cancelled = false;
 
@@ -56,6 +61,7 @@ function OutfitBuilder() {
     return () => clearTimeout(timer);
   }, [success]);
 
+  // Ids already placed in a slot — the picker will hide those so they are not reused.
   const usedIds = useMemo(
     () => new Set(Object.values(slots).filter(Boolean).map((item) => item.id)),
     [slots],
@@ -64,6 +70,7 @@ function OutfitBuilder() {
   const filledCount = Object.values(slots).filter(Boolean).length;
   const pickerSlot = SLOTS.find((slot) => slot.key === pickerKey);
 
+  // Put this piece in the slot and close the picker.
   function assignItem(slotKey, item) {
     setSlots((current) => ({ ...current, [slotKey]: item }));
     setPickerKey(null);
@@ -72,6 +79,7 @@ function OutfitBuilder() {
   }
 
   function clearSlot(slotKey) {
+    // Copy the object, then delete that key so the slot looks empty again.
     setSlots((current) => {
       const next = { ...current };
       delete next[slotKey];
@@ -81,6 +89,7 @@ function OutfitBuilder() {
     setSuccess("");
   }
 
+  // Need a name, an occasion, and at least two pieces before we POST.
   async function handleSave(event) {
     event.preventDefault();
     if (saving) return;

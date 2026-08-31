@@ -1,4 +1,6 @@
 // FR-03: Clothing Upload & AI Tagging
+// Upload photos, auto-tag them, then create/edit/favourite/delete wardrobe items.
+// Every query includes userId so one account cannot see or change another.
 
 const path = require("path");
 const fs = require("fs");
@@ -12,12 +14,14 @@ const { analyseClothingImage } = require("../visionTag");
 const router = express.Router();
 router.use(requireAuth);
 
+// Two folders up from routes/ → backend/uploads.
 const uploadsDir = path.join(__dirname, "..", "..", "uploads");
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
 const FREE_WARDROBE_LIMIT = 20;
 
+// Save each file as "<userId>-<timestamp>.<ext>" so we can prove ownership later.
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => {
@@ -40,6 +44,7 @@ const upload = multer({
   },
 });
 
+// Wrap multer's callback API in a Promise so we can await it inside try/catch.
 function runUpload(req, res) {
   return new Promise((resolve, reject) => {
     upload.single("image")(req, res, (err) => {
@@ -50,7 +55,7 @@ function runUpload(req, res) {
 }
 
 function mimeFromName(filename) {
-  const ext = path.extname(filename).toLowerCase();
+  const ext = path.extname(filename).toLowerCase(); // default below is JPEG
   if (ext === ".png") return "image/png";
   if (ext === ".webp") return "image/webp";
   return "image/jpeg";
@@ -66,6 +71,7 @@ function resolveOwnedUploadPath(imageUrl, userId) {
   return { path: filePath, mimetype: mimeFromName(filename) };
 }
 
+// Delete the image file only if it belongs to this user (same name prefix check).
 function deleteUploadFile(imageUrl, userId) {
   if (!imageUrl || !imageUrl.startsWith("/uploads/")) return;
   const filename = path.basename(imageUrl);
@@ -76,11 +82,13 @@ function deleteUploadFile(imageUrl, userId) {
   }
 }
 
+// Route params are strings; reject "abc" so we do not query id = NaN.
 function parseItemId(value) {
   const id = Number(value);
   return Number.isInteger(id) ? id : null;
 }
 
+// Load an item only if it belongs to the current user. Sends 400/404 itself.
 async function findOwnedItem(req, res) {
   const id = parseItemId(req.params.id);
   if (id === null) {
@@ -98,6 +106,7 @@ async function findOwnedItem(req, res) {
   return item;
 }
 
+// Saved outfits store item ids as JSON; values may be numbers or strings.
 function outfitContainsItem(itemIds, itemId) {
   if (!Array.isArray(itemIds)) return false;
   return itemIds.some((value) => Number(value) === itemId);
@@ -194,6 +203,7 @@ router.post("/", async (req, res) => {
     }
 
     const filename = path.basename(imageUrl);
+    // Filename must start with this user's id so you cannot claim someone else's photo.
     if (!filename.startsWith(`${req.session.userId}-`)) {
       return res.status(400).json({ error: "Please upload an image first." });
     }
@@ -221,6 +231,7 @@ router.post("/", async (req, res) => {
       }),
       prisma.wardrobeItem.count({ where: { userId: req.session.userId } }),
     ]);
+    // Free accounts: notify once when they hit the 20-item cap.
     if (owner?.accountType === "free" && itemCount >= FREE_WARDROBE_LIMIT) {
       await createNotificationOnce(req.session.userId, MESSAGES.wardrobeLimit);
     }
@@ -250,6 +261,7 @@ router.patch("/:id", async (req, res) => {
       return res.status(400).json({ error: "Please choose a tag from each dropdown." });
     }
 
+    // updateMany + userId: even if findOwnedItem raced, we still cannot edit others.
     await prisma.wardrobeItem.updateMany({
       where: { id: existing.id, userId: req.session.userId },
       data: tags,
@@ -288,6 +300,7 @@ router.post("/:id/favourite", async (req, res) => {
   }
 });
 
+// Block delete if this item is still part of a saved outfit.
 router.delete("/:id", async (req, res) => {
   try {
     const existing = await findOwnedItem(req, res);

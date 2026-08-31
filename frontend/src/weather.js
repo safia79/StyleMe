@@ -1,9 +1,11 @@
 // FR-05: Weather-Based Filtering
 // Calls our backend, which talks to Open-Meteo. If anything fails, callers
 // should show "Weather data unavailable" instead of crashing.
+// Small helper used by WeatherBanner (and anything else that needs a city forecast).
 
 import { apiRequest } from "./api.js";
 
+// Look up today's weather for a city name. Returns weather data or null.
 export async function fetchCityWeather(city) {
   const trimmed = typeof city === "string" ? city.trim() : "";
   if (!trimmed) {

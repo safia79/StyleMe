@@ -10,12 +10,16 @@
 // 7. Exported both processStyleMeRequest and mockStyleMeLook for compatibility.
 // ==============================================================================
 
+// Style Me: take a free-text prompt + the user's wardrobe, ask Gemini for
+// item IDs, then map those IDs back to real wardrobe rows.
+
 const prisma = require("./db");
 
 // CHANGED: Set Gemini API endpoint parameters instead of Anthropic
 const GEMINI_MODEL = process.env.GEMINI_VISION_MODEL || "gemini-3.5-flash";
 
 // Helper: Empty / error payload generator
+// Always the same shape so the route can map `code` to an HTTP status.
 function emptyError(message, code) {
   return {
     success: false,
@@ -42,6 +46,7 @@ async function callGemini(structuredPrompt) {
     throw new Error("GEMINI_API_KEY is not set in process.env");
   }
 
+  // Gemini accepts the key as a query param on this REST URL.
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
   const response = await fetch(endpoint, {
@@ -144,6 +149,7 @@ Respond ONLY with a valid JSON object matching this exact structure:
   }
 
   // 6. Map returned IDs back to full database items expected by the frontend UI
+  // Only keep IDs that actually belong to this user (ignore made-up IDs).
   const wardrobeById = new Map(wardrobeItems.map((item) => [String(item.id), item]));
   const validatedItems = (aiResponse.outfitItemIds || [])
     .map((id) => wardrobeById.get(String(id)))

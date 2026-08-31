@@ -1,5 +1,6 @@
 // FR-04: AI Outfit Recommendation
 // FR-06: Style Me (Generative AI Prompt)
+// Card that shows one generated look: photos, why it works, tips, and Save.
 
 import { imageSrc } from "../api.js";
 

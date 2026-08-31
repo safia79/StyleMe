@@ -1,5 +1,6 @@
 // FR-04: AI Outfit Recommendation
 // FR-05: Weather-Based Filtering (banner + temperature used by mock recommend)
+// Generate outfits from the wardrobe. Users can retry without weather or occasion.
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -15,26 +16,33 @@ const OCCASIONS = ["Casual", "Work", "Formal", "Date Night"];
 function Recommendations() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  // weather: latest forecast from WeatherBanner (or null).
   const [weather, setWeather] = useState(null);
   const [occasion, setOccasion] = useState("");
   const [outfits, setOutfits] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // savingId / savedKeys: which generated look is saving or already saved.
   const [savingId, setSavingId] = useState(null);
   const [savedKeys, setSavedKeys] = useState([]);
+  // shortage: API said there were not enough matching items.
   const [shortage, setShortage] = useState(null);
   const [ignoreWeather, setIgnoreWeather] = useState(false);
   const [ignoreOccasion, setIgnoreOccasion] = useState(false);
+  // lastFlags: which filters we used last time (for the "try without" buttons).
   const [lastFlags, setLastFlags] = useState({ skipWeather: false, skipOccasion: false });
 
+  // WeatherBanner calls this when the forecast arrives or fails.
   function handleWeatherChange(nextWeather) {
     setWeather(nextWeather && typeof nextWeather.temperature === "number" ? nextWeather : null);
   }
 
+  // Stable id for a look, based on which clothing ids it contains.
   function outfitKey(outfit) {
     return (outfit.items || []).map((item) => item.id).join("-");
   }
 
+  // Ask the backend for looks. skipWeather / skipOccasion loosen the filters.
   async function generateOutfits({ skipWeather = false, skipOccasion = false } = {}) {
     if (loading) return;
     setError("");
@@ -78,11 +86,13 @@ function Recommendations() {
     setOutfits(result.data.outfits || []);
   }
 
+  // First generate always uses weather + occasion (if they were provided).
   async function handleGenerate(event) {
     event.preventDefault();
     await generateOutfits({ skipWeather: false, skipOccasion: false });
   }
 
+  // Store this look in Outfit History.
   async function handleSave(outfit) {
     const key = outfitKey(outfit);
     if (savingId) return;

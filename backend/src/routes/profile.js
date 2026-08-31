@@ -8,6 +8,7 @@ const { getStylePreferences, saveStylePreferences, STYLE_PREFERENCES } = require
 const router = express.Router();
 router.use(requireAuth);
 
+// Same public fields as auth — never send passwordHash to the browser.
 const publicUserSelect = {
   id: true,
   name: true,
@@ -17,6 +18,7 @@ const publicUserSelect = {
   createdAt: true,
 };
 
+// Merge DB user fields with style preferences from the JSON file.
 function withPreferences(user) {
   return {
     ...user,
@@ -24,6 +26,7 @@ function withPreferences(user) {
   };
 }
 
+// Load the logged-in user's profile plus allowed preference chips.
 router.get("/", async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
@@ -43,6 +46,7 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Update name + city in the database; preferences stay in the JSON file.
 router.patch("/", async (req, res) => {
   try {
     const name = typeof req.body.name === "string" ? req.body.name.trim() : "";

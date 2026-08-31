@@ -1,3 +1,5 @@
+// "Are you sure?" popup used before deleting a wardrobe item or outfit.
+// Clicking the dark backdrop cancels, unless a delete is already in progress.
 import { useState } from "react";
 
 function ConfirmDialog({
@@ -8,9 +10,11 @@ function ConfirmDialog({
   onConfirm,
   onCancel,
 }) {
+  // locked: we already clicked confirm — ignore extra clicks while it runs.
   const [locked, setLocked] = useState(false);
   const waiting = busy || locked;
 
+  // First click locks the buttons, then the parent starts the real delete.
   function handleConfirm() {
     if (waiting) return;
     setLocked(true);
@@ -24,6 +28,7 @@ function ConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
+        // Stop a click inside the box from counting as a backdrop cancel.
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="confirm-title">{title}</h2>

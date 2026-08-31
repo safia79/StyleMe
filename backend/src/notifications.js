@@ -2,6 +2,8 @@
 
 const prisma = require("./db");
 
+// Insert one notification row. Returns null (and logs) if the insert fails
+// so a wardrobe save is not blocked by a notification error.
 async function createNotification(userId, { message, type }) {
   try {
     return await prisma.notification.create({
@@ -13,6 +15,8 @@ async function createNotification(userId, { message, type }) {
   }
 }
 
+// Same as createNotification, but skip if this user already has that message
+// (e.g. do not spam the free-wardrobe-limit notice on every extra save).
 async function createNotificationOnce(userId, { message, type }) {
   try {
     const existing = await prisma.notification.findFirst({
@@ -26,6 +30,7 @@ async function createNotificationOnce(userId, { message, type }) {
   }
 }
 
+// Fixed copy used by wardrobe + subscription routes.
 const MESSAGES = {
   wardrobeLimit: {
     type: "upgrade",

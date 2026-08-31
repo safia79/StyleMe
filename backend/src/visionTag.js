@@ -53,6 +53,7 @@ const SYSTEM_PROMPT = [
  * Helper: Resolve image MIME type from file path if not explicitly provided.
  */
 function mimeFromPath(filePath, fallback) {
+  // Unknown extension → caller fallback, then JPEG.
   const ext = path.extname(filePath || "").toLowerCase();
   return MIME_BY_EXT[ext] || fallback || "image/jpeg";
 }
@@ -62,6 +63,7 @@ function mimeFromPath(filePath, fallback) {
  */
 function parseJsonObject(text) {
   const raw = String(text || "").trim();
+  // Models sometimes wrap JSON in ```json ... ``` — unwrap before JSON.parse.
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const jsonText = fenced ? fenced[1].trim() : raw;
   const parsed = JSON.parse(jsonText);
@@ -81,6 +83,7 @@ function snapToList(value, list) {
   const exact = list.find((item) => item.toLowerCase() === lower);
   if (exact) return exact;
 
+  // US spelling "gray" → our list uses "Grey".
   if (lower === "gray") {
     const grey = list.find((item) => item.toLowerCase() === "grey");
     if (grey) return grey;
@@ -89,6 +92,7 @@ function snapToList(value, list) {
   const partial = list.find(
     (item) => item.toLowerCase().includes(lower) || lower.includes(item.toLowerCase())
   );
+  // Last resort: first allowed value so the form never gets an unknown tag.
   return partial || list[0];
 }
 
@@ -96,6 +100,7 @@ function snapToList(value, list) {
  * Normalizes raw tag predictions into strict project enum values.
  */
 function normalizeTags(raw) {
+  // Some models name the field formality_level instead of formality.
   const formality = raw.formality || raw.formality_level;
   return {
     category: snapToList(raw.category, CATEGORIES),
@@ -130,7 +135,7 @@ async function callGeminiVision(apiKey, mimeType, base64) {
         },
       ],
       generationConfig: {
-        temperature: 0,
+        temperature: 0, // 0 = less random, more consistent tags
         responseMimeType: "application/json",
       },
     }),
@@ -163,6 +168,7 @@ async function analyseClothingImage(file) {
   const mimeType = file.mimetype || mimeFromPath(filePath);
   const base64 = fs.readFileSync(filePath).toString("base64");
   
+  // Accept either env name so a Google Cloud key still works.
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
   if (geminiKey) {

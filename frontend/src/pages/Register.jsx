@@ -1,4 +1,6 @@
 // FR-01: User Registration
+// Create-account form. Validates name/email/password as the user types,
+// then calls AuthContext.register which talks to the backend.
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -10,6 +12,7 @@ import { ButtonSpinner } from "../components/StatusPanel.jsx";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
+// Return an error string for one field, or "" if that field looks fine.
 function validateField(field, value) {
   const text = typeof value === "string" ? value.trim() : "";
 
@@ -37,6 +40,7 @@ function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  // values: the form fields. city is optional and is not validated live.
   const [values, setValues] = useState({
     name: "",
     email: "",
@@ -47,6 +51,7 @@ function Register() {
   const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Keep the typed value, clear the server banner, and re-check that field.
   function handleChange(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
     setServerError("");
@@ -60,6 +65,7 @@ function Register() {
     }
   }
 
+  // Re-check every required field, then create the account if they all pass.
   async function handleSubmit(event) {
     event.preventDefault(); // stay on this page — no full reload
 

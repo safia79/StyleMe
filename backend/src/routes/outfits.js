@@ -10,6 +10,8 @@ const requireAuth = require("../middleware/requireAuth");
 const router = express.Router();
 router.use(requireAuth);
 
+// Saved outfits only store item id lists. This loads the full item rows
+// for the UI, and drops ids that no longer exist in this user's wardrobe.
 async function attachItems(outfits, userId) {
   const ids = [
     ...new Set(
@@ -33,6 +35,7 @@ async function attachItems(outfits, userId) {
   }));
 }
 
+// List this user's saved outfits, newest first, with item objects attached.
 router.get("/", async (req, res) => {
   try {
     const outfits = await prisma.savedOutfit.findMany({
@@ -46,6 +49,7 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Create a saved outfit. All itemIds must belong to this user.
 router.post("/", async (req, res) => {
   try {
     const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
@@ -64,6 +68,7 @@ router.post("/", async (req, res) => {
       where: { userId: req.session.userId, id: { in: itemIds } },
       select: { id: true },
     });
+    // If the counts differ, at least one id is missing or belongs to someone else.
     if (owned.length !== itemIds.length) {
       return res.status(400).json({ error: "One or more items are not in your wardrobe." });
     }
@@ -85,6 +90,7 @@ router.post("/", async (req, res) => {
   }
 });
 
+// Same pattern as wardrobe findOwnedItem: 400/404 and never return another user's row.
 async function findOwnedOutfit(req, res) {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
@@ -152,6 +158,7 @@ router.post("/:id/wear", async (req, res) => {
         }),
       );
     }
+    // One transaction: outfit wornCount and item wearCount stay in sync.
     await prisma.$transaction(updates);
 
     const updated = await prisma.savedOutfit.findFirst({

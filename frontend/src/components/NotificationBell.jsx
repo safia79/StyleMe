@@ -1,8 +1,11 @@
+// Bell in the navbar. Loads real notifications from the API and shows a
+// red dot only when at least one item is still unread.
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { apiRequest } from "../api.js";
 import UiIcon from "./UiIcons.jsx";
 
+// Turn a timestamp into "Just now", "5 minutes ago", etc.
 function relativeTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -24,13 +27,17 @@ function relativeTime(value) {
 
 function NotificationBell({ onOpen, closeWhen }) {
   const location = useLocation();
+  // open: whether the dropdown is visible.
   const [open, setOpen] = useState(false);
+  // items: the list from GET /api/notifications.
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // markingId: which row is being marked read (disables double-clicks).
   const [markingId, setMarkingId] = useState(null);
   const menuRef = useRef(null);
 
+  // Fetch the latest list. Called on page change and when the menu opens.
   async function loadNotifications() {
     const result = await apiRequest("/api/notifications");
     if (!result.ok) {
@@ -45,15 +52,18 @@ function NotificationBell({ onOpen, closeWhen }) {
     setLoading(false);
   }
 
+  // New page → close the menu and refresh the list.
   useEffect(() => {
     setOpen(false);
     loadNotifications();
   }, [location.pathname]);
 
+  // Parent (Navbar) can force-close us when the profile menu or mobile menu opens.
   useEffect(() => {
     if (closeWhen) setOpen(false);
   }, [closeWhen]);
 
+  // Same outside-click / Escape pattern as the profile dropdown.
   useEffect(() => {
     if (!open) return undefined;
 
@@ -75,6 +85,7 @@ function NotificationBell({ onOpen, closeWhen }) {
     };
   }, [open]);
 
+  // Open or close. Opening also tells Navbar to close the profile menu.
   async function handleToggle() {
     const next = !open;
     setOpen(next);
@@ -84,6 +95,7 @@ function NotificationBell({ onOpen, closeWhen }) {
     }
   }
 
+  // Click a row to mark it read on the server, then update that row in state.
   async function handleMarkRead(notification) {
     if (notification.isRead || markingId) return;
     setMarkingId(notification.id);

@@ -1,3 +1,5 @@
+// In-app notification list and mark-as-read. Always scoped to the logged-in user.
+
 const express = require("express");
 const prisma = require("../db");
 const requireAuth = require("../middleware/requireAuth");
@@ -5,6 +7,7 @@ const requireAuth = require("../middleware/requireAuth");
 const router = express.Router();
 router.use(requireAuth);
 
+// Newest first so the bell dropdown shows recent messages at the top.
 router.get("/", async (req, res) => {
   try {
     const notifications = await prisma.notification.findMany({
@@ -18,6 +21,7 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Mark one notification read. userId in the where-clause stops ID guessing.
 router.post("/:id/read", async (req, res) => {
   try {
     const id = Number(req.params.id);

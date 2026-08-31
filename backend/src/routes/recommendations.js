@@ -10,6 +10,7 @@ const { mockRecommendOutfits, OCCASIONS } = require("../mockRecommend");
 const router = express.Router();
 router.use(requireAuth);
 
+// Weather the React app already fetched (used if the server lookup fails).
 function readClientWeather(body) {
   const temperature =
     typeof body.temperature === "number" && Number.isFinite(body.temperature)
@@ -21,9 +22,11 @@ function readClientWeather(body) {
   return { temperature, conditions };
 }
 
+// Build 1–3 outfit suggestions from this user's wardrobe + optional filters.
 router.post("/generate", async (req, res) => {
   try {
     const occasion = typeof req.body.occasion === "string" ? req.body.occasion : "";
+    // These flags are set only when the user clicks a "show without …" button.
     const ignoreWeather = Boolean(req.body.ignoreWeather);
     const ignoreOccasion = Boolean(req.body.ignoreOccasion);
     const clientWeather = readClientWeather(req.body);
@@ -46,6 +49,7 @@ router.post("/generate", async (req, res) => {
       }
     }
 
+    // Prefer live city weather; otherwise use what the client sent.
     const temperature =
       weather && typeof weather.temperature === "number"
         ? weather.temperature
@@ -65,6 +69,7 @@ router.post("/generate", async (req, res) => {
       ignoreOccasion,
     });
 
+    // Shortage is a successful response (200) with a message, not a 400 error.
     if (result.shortage) {
       return res.json({
         outfits: [],

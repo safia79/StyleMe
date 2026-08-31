@@ -1,3 +1,5 @@
+// One SVG icon component. Pass a name like "mail" or "heart" and it draws
+// the matching paths. Keeps icons consistent without extra image files.
 const PATHS = {
   mail: (
     <>
@@ -128,6 +130,7 @@ const PATHS = {
   ),
 };
 
+// name must match a key in PATHS above. Unknown names draw an empty box.
 function UiIcon({ name, size = 18, ...props }) {
   return (
     <svg

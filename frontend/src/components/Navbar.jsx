@@ -4,6 +4,8 @@
 // FR-10: Profile & Preferences
 // FR-11: Wardrobe Analytics
 // FR-12: Manual Outfit Builder
+// The sticky top bar on every page. Guests see Register/Login; signed-in
+// users see app links, notifications, and the profile menu.
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
@@ -11,6 +13,7 @@ import NotificationBell from "./NotificationBell.jsx";
 import BrandMark from "./BrandMark.jsx";
 import UiIcon from "./UiIcons.jsx";
 
+// Main destinations after login. StyleMe also shows a Premium badge.
 const appLinks = [
   { to: "/wardrobe", label: "Wardrobe" },
   { to: "/recommendations", label: "Recommendations" },
@@ -20,11 +23,13 @@ const appLinks = [
   { to: "/analytics", label: "Analytics" },
 ];
 
+// First letter of the name for the round avatar (or "?" if missing).
 function firstInitial(name) {
   const letter = name && name.trim()[0];
   return letter ? letter.toUpperCase() : "?";
 }
 
+// Only the first word — keeps the chip short on small screens.
 function firstNameFrom(name) {
   if (!name) return "";
   return name.trim().split(/\s+/)[0] || "";
@@ -34,15 +39,19 @@ function Navbar() {
   const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  // menuOpen: mobile "Menu" drawer. accountOpen: profile dropdown.
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  // Used to detect clicks outside the profile menu so we can close it.
   const accountRef = useRef(null);
 
+  // Changing page should close any open menus.
   useEffect(() => {
     setMenuOpen(false);
     setAccountOpen(false);
   }, [location.pathname]);
 
+  // While the profile menu is open, listen for outside clicks and Escape.
   useEffect(() => {
     if (!accountOpen) return undefined;
 
@@ -64,6 +73,7 @@ function Navbar() {
     };
   }, [accountOpen]);
 
+  // Clear the session, close menus, then go back to Login.
   async function handleSignOut() {
     await logout();
     setMenuOpen(false);
