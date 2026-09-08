@@ -812,6 +812,27 @@ a.btn:hover {
   gap: 1rem;
 }
 
+.wardrobe-fav-divider {
+  margin: 1.75rem 0 1.15rem;
+}
+
+.wardrobe-fav-divider span {
+  display: block;
+  margin: 0 0 0.45rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wardrobe-fav-divider::after {
+  content: "";
+  display: block;
+  height: 1px;
+  background: var(--oatmeal);
+}
+
 .item-card {
   display: flex;
   flex-direction: column;
@@ -822,7 +843,19 @@ a.btn:hover {
   font: inherit;
   color: inherit;
   box-shadow: var(--shadow);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, opacity 0.2s ease;
+  animation: wardrobe-card-enter 0.28s ease-out;
+}
+
+@keyframes wardrobe-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .item-card-hit {
@@ -1729,7 +1762,8 @@ a.btn:hover {
 @media (prefers-reduced-motion: reduce) {
   .auth-card,
   .auth-hanger,
-  .auth-orb-b {
+  .auth-orb-b,
+  .item-card {
     animation: none;
   }
 

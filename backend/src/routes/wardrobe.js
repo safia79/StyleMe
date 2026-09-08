@@ -183,7 +183,11 @@ router.get("/", async (req, res) => {
   try {
     const items = await prisma.wardrobeItem.findMany({
       where: { userId: req.session.userId },
-      orderBy: { uploadDate: "desc" },
+      orderBy: [
+        { isFavourite: "desc" },
+        { favoritedAt: { sort: "desc", nulls: "last" } },
+        { uploadDate: "desc" },
+      ],
     });
     return res.json({ items });
   } catch (err) {
@@ -284,9 +288,13 @@ router.post("/:id/favourite", async (req, res) => {
     const existing = await findOwnedItem(req, res);
     if (!existing) return;
 
+    const isFavourite = !existing.isFavourite;
     await prisma.wardrobeItem.updateMany({
       where: { id: existing.id, userId: req.session.userId },
-      data: { isFavourite: !existing.isFavourite },
+      data: {
+        isFavourite,
+        favoritedAt: isFavourite ? new Date() : null,
+      },
     });
 
     const item = await prisma.wardrobeItem.findFirst({

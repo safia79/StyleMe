@@ -48,6 +48,7 @@ model WardrobeItem {
   isFavourite Boolean  @default(false)
   wearCount   Int      @default(0)
   uploadDate  DateTime @default(now())
+  favoritedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

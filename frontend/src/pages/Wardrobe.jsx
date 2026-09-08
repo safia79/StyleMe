@@ -66,6 +66,11 @@ function Wardrobe() {
     });
   }, [items, search, category, colour, season]);
 
+  // Keep arrival order; only split by the existing favourite flag.
+  const favouriteItems = visibleItems.filter((item) => item.isFavourite);
+  const otherItems = visibleItems.filter((item) => !item.isFavourite);
+  const showFavDivider = favouriteItems.length > 0 && otherItems.length > 0;
+
   // Replace one item in the list (and in the open modal, if it is that item).
   function applyItem(updated) {
     setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
@@ -112,6 +117,40 @@ function Wardrobe() {
 
     applyItem(result.data.item);
     showToast(result.data.item.isFavourite ? "Added to favourites." : "Removed from favourites.");
+  }
+
+  function renderItemCard(item) {
+    return (
+      <article key={item.id} className="item-card">
+        <button type="button" className="item-card-hit" onClick={() => setSelected(item)}>
+          <span className="item-card-media">
+            <img src={imageSrc(item.imageUrl)} alt={`${item.colour} ${item.category}`} />
+          </span>
+          <span className="item-card-body">
+            <strong>
+              {item.colour} {item.category}
+            </strong>
+            <span>
+              {item.style} · {item.season}
+            </span>
+          </span>
+        </button>
+        <button
+          type="button"
+          className={`fav-toggle ${item.isFavourite ? "is-on" : ""}`}
+          aria-pressed={item.isFavourite}
+          aria-label={item.isFavourite ? "Remove favourite" : "Add to favourites"}
+          disabled={favouritingId === item.id}
+          onClick={() => handleFavouriteClick(item)}
+        >
+          {favouritingId === item.id ? (
+            <span className="btn-spinner fav-spinner" />
+          ) : (
+            <UiIcon name={item.isFavourite ? "heartFilled" : "heart"} size={16} />
+          )}
+        </button>
+      </article>
+    );
   }
 
   return (
@@ -188,39 +227,21 @@ function Wardrobe() {
       ) : null}
 
       {visibleItems.length > 0 ? (
-        <div className="item-grid">
-          {visibleItems.map((item) => (
-            <article key={item.id} className="item-card">
-              <button type="button" className="item-card-hit" onClick={() => setSelected(item)}>
-                <span className="item-card-media">
-                  <img src={imageSrc(item.imageUrl)} alt={`${item.colour} ${item.category}`} />
-                </span>
-                <span className="item-card-body">
-                  <strong>
-                    {item.colour} {item.category}
-                  </strong>
-                  <span>
-                    {item.style} · {item.season}
-                  </span>
-                </span>
-              </button>
-              <button
-                type="button"
-                className={`fav-toggle ${item.isFavourite ? "is-on" : ""}`}
-                aria-pressed={item.isFavourite}
-                aria-label={item.isFavourite ? "Remove favourite" : "Add to favourites"}
-                disabled={favouritingId === item.id}
-                onClick={() => handleFavouriteClick(item)}
-              >
-                {favouritingId === item.id ? (
-                  <span className="btn-spinner fav-spinner" />
-                ) : (
-                  <UiIcon name={item.isFavourite ? "heartFilled" : "heart"} size={16} />
-                )}
-              </button>
-            </article>
-          ))}
-        </div>
+        <>
+          {favouriteItems.length > 0 ? (
+            <div className="item-grid">{favouriteItems.map(renderItemCard)}</div>
+          ) : null}
+
+          {showFavDivider ? (
+            <div className="wardrobe-fav-divider">
+              <span>Other items</span>
+            </div>
+          ) : null}
+
+          {otherItems.length > 0 ? (
+            <div className="item-grid">{otherItems.map(renderItemCard)}</div>
+          ) : null}
+        </>
       ) : null}
 
       {/* Modals only mount when needed so they do not sit hidden in the DOM. */}
