@@ -8,6 +8,8 @@ const bcrypt = require("bcrypt");
 const passport = require("passport");
 const prisma = require("../db");
 const { createResetToken, consumeResetToken } = require("../passwordReset");
+const { createOtp, consumeOtp } = require("../otp");
+const { sendOtpEmail, sendPasswordResetEmail } = require("../mailer");
 
 const router = express.Router();
 
@@ -139,9 +141,40 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Stamp lastLoginAt only after the password is confirmed.
+    // FR-13: OTP Login Verification (Two-Factor Authentication)
+    // Password is correct, but do not start a session until the OTP is verified.
+    const devOtp = createOtp(user.id);
+    // FR-13: OTP Login Verification (Two-Factor Authentication) — Email Delivery
+    await sendOtpEmail(user.email, devOtp);
+    return res.json({
+      otpRequired: true,
+      userId: user.id,
+      // DEV ONLY — in production this would be emailed/texted, never returned directly
+      devOtp,
+      devNote: "DEV ONLY — in production this would be emailed/texted, never returned directly.",
+    });
+  } catch (err) {
+    console.error("Login error:", err);
+    return res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
+});
+
+// FR-13: OTP Login Verification (Two-Factor Authentication)
+router.post("/login/verify-otp", async (req, res) => {
+  try {
+    const userId = Number(req.body.userId);
+    const code = req.body.code;
+    if (!Number.isInteger(userId) || (typeof code !== "string" && typeof code !== "number")) {
+      return res.status(400).json({ error: "Invalid or expired code. Please try again." });
+    }
+
+    const verifiedId = consumeOtp(userId, code);
+    if (!verifiedId) {
+      return res.status(400).json({ error: "Invalid or expired code. Please try again." });
+    }
+
     const loggedInUser = await prisma.user.update({
-      where: { id: user.id },
+      where: { id: verifiedId },
       data: { lastLoginAt: new Date() },
       select: publicUserSelect,
     });
@@ -150,7 +183,39 @@ router.post("/login", async (req, res) => {
 
     return res.json({ user: loggedInUser });
   } catch (err) {
-    console.error("Login error:", err);
+    console.error("OTP verify error:", err);
+    return res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
+});
+
+// FR-13: OTP Login Verification (Two-Factor Authentication)
+router.post("/login/resend-otp", async (req, res) => {
+  try {
+    const userId = Number(req.body.userId);
+    if (!Number.isInteger(userId)) {
+      return res.status(400).json({ error: "Invalid or expired code. Please try again." });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true },
+    });
+    if (!user) {
+      return res.status(400).json({ error: "Invalid or expired code. Please try again." });
+    }
+
+    const devOtp = createOtp(user.id);
+    // FR-13: OTP Login Verification (Two-Factor Authentication) — Email Delivery
+    await sendOtpEmail(user.email, devOtp);
+    return res.json({
+      otpRequired: true,
+      userId: user.id,
+      // DEV ONLY — in production this would be emailed/texted, never returned directly
+      devOtp,
+      devNote: "DEV ONLY — in production this would be emailed/texted, never returned directly.",
+    });
+  } catch (err) {
+    console.error("OTP resend error:", err);
     return res.status(500).json({ error: "Something went wrong. Please try again." });
   }
 });
@@ -197,6 +262,8 @@ router.post("/forgot-password", async (req, res) => {
 
     if (user) {
       const resetToken = createResetToken(user.id);
+      // FR-02: Forgot Password — Email Delivery (Resend)
+      await sendPasswordResetEmail(user.email, resetToken);
       // DEV ONLY — in production this would be emailed, never returned directly
       payload.resetToken = resetToken;
       payload.devNote = "DEV ONLY — in production this would be emailed, never returned directly";
@@ -282,10 +349,15 @@ router.get(
   passport.authenticate("google", {
     failureRedirect: process.env.FRONTEND_URL + "/login",
   }),
-  (req, res) => {
-    // Match email/password login so requireAuth and /me see this user.
-    req.session.userId = req.user.id;
-    res.redirect(process.env.FRONTEND_URL + "/dashboard");
+  async (req, res) => {
+    // FR-13: OTP Login Verification (Two-Factor Authentication) — Google OAuth
+    // Passport has already linked/created the user. Do not start a session
+    // until they enter the OTP (same as email/password login).
+    const devOtp = createOtp(req.user.id);
+    console.log("DEV ONLY — Google OTP for userId", req.user.id, ":", devOtp);
+    // FR-13: OTP Login Verification (Two-Factor Authentication) — Email Delivery
+    await sendOtpEmail(req.user.email, devOtp);
+    res.redirect(`${process.env.FRONTEND_URL}/verify-otp?userId=${req.user.id}`);
   },
 );
 

@@ -740,6 +740,25 @@ a.btn:hover {
   text-underline-offset: 3px;
 }
 
+/* FR-13: OTP Login Verification (Two-Factor Authentication) */
+.form-switch button.forgot-link {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--terracotta);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.form-switch button.forgot-link:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .btn-secondary,
 .btn-ghost,
 .btn-danger,

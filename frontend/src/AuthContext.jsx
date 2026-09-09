@@ -49,11 +49,38 @@ export function AuthProvider({ children }) {
       body: formValues,
     });
 
+    // FR-13: OTP Login Verification (Two-Factor Authentication)
+    if (result.data.otpRequired) {
+      return result;
+    }
+
     if (result.ok) {
       setUser(result.data.user);
     }
 
     return result;
+  }
+
+  // FR-13: OTP Login Verification (Two-Factor Authentication)
+  async function verifyOtp(userId, code) {
+    const result = await apiRequest("/api/auth/login/verify-otp", {
+      method: "POST",
+      body: { userId, code },
+    });
+
+    if (result.ok) {
+      setUser(result.data.user);
+    }
+
+    return result;
+  }
+
+  // FR-13: OTP Login Verification (Two-Factor Authentication)
+  async function resendOtp(userId) {
+    return apiRequest("/api/auth/login/resend-otp", {
+      method: "POST",
+      body: { userId },
+    });
   }
 
   // End the session on the server, then forget the user in this browser.
@@ -63,7 +90,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, register, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, register, login, logout, refreshUser, verifyOtp, resendOtp }}>
       {children}
     </AuthContext.Provider>
   );

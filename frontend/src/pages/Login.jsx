@@ -58,6 +58,12 @@ function Login() {
       return;
     }
 
+    // FR-13: OTP Login Verification (Two-Factor Authentication)
+    if (result.data.otpRequired) {
+      navigate("/verify-otp", { state: { userId: result.data.userId } });
+      return;
+    }
+
     navigate("/dashboard");
   }
 
