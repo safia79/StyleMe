@@ -1,25 +1,8 @@
-// FR-13: OTP Login Verification (Two-Factor Authentication) — Email Delivery
-// Sends the existing OTP code by email via Resend. Does not generate codes.
+// FR-02: Forgot Password — Email Delivery (Resend)
 
 const { Resend } = require("resend");
 
-// FR-13: OTP Login Verification (Two-Factor Authentication) — Email Delivery
 const resend = new Resend(process.env.RESEND_API_KEY);
-
-// FR-13: OTP Login Verification (Two-Factor Authentication) — Email Delivery
-async function sendOtpEmail(toEmail, code) {
-  try {
-    await resend.emails.send({
-      from: "onboarding@resend.dev",
-      to: toEmail,
-      subject: "Your StyleME verification code",
-      text: `Your code is: ${code}. It expires in 5 minutes.`,
-      html: `<p>Your code is: <strong>${code}</strong>. It expires in 5 minutes.</p>`,
-    });
-  } catch (err) {
-    console.error("FR-13 OTP email send failed:", err);
-  }
-}
 
 // FR-02: Forgot Password — Email Delivery (Resend)
 async function sendPasswordResetEmail(toEmail, resetToken) {
@@ -36,4 +19,4 @@ async function sendPasswordResetEmail(toEmail, resetToken) {
   }
 }
 
-module.exports = { sendOtpEmail, sendPasswordResetEmail };
+module.exports = { sendPasswordResetEmail };
