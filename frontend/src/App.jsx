@@ -15,7 +15,6 @@ import PublicOnlyRoute from "./components/PublicOnlyRoute.jsx";
 import Register from "./pages/Register.jsx";
 import Login from "./pages/Login.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
-import VerifyOtp from "./pages/VerifyOtp.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Wardrobe from "./pages/Wardrobe.jsx";
 import Recommendations from "./pages/Recommendations.jsx";
@@ -60,9 +59,6 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
         </Route>
-
-        {/* FR-13: OTP Login Verification (Two-Factor Authentication) */}
-        <Route path="/verify-otp" element={<VerifyOtp />} />
 
         {/* Logged-in pages — guests are sent to /login. */}
         <Route element={<ProtectedRoute />}>
